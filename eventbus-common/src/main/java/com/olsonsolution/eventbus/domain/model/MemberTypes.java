@@ -27,4 +27,13 @@ public enum MemberTypes implements MemberType {
                 .orElseThrow(() -> new UnknownMemberTypeException(identifier));
     }
 
+    @Override
+    public boolean isEqualTo(MemberType memberType) {
+        if (memberType instanceof MemberTypes memberTypes) {
+            return memberTypes.equals(this);
+        } else if (memberType != null) {
+            return name().equals(memberType.name()) && identifier == memberType.getIdentifier();
+        }
+        return false;
+    }
 }

@@ -4,15 +4,14 @@ import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
+import reactor.core.publisher.Mono;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
 
 public interface EventDispatcher<C, S extends PublisherSubscription<M>, M extends SubscriptionMetadata> {
 
     S getSubscription();
 
-    void subscribe();
-
-    CompletableFuture<EventAcknowledgment> publish(EventMessage<C> message);
+    Mono<List<EventAcknowledgment>> dispatch(EventMessage<C> message);
 
 }

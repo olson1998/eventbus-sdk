@@ -9,6 +9,6 @@ public interface EventMessage<C> {
 
     ZonedDateTime getTimestamp();
 
-    Map<String, String> getHeaders();
+    Map<String, Object> getHeaders();
 
 }
