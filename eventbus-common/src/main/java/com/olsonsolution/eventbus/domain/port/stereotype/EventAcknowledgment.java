@@ -1,14 +1,9 @@
 package com.olsonsolution.eventbus.domain.port.stereotype;
 
 import java.time.ZonedDateTime;
-import java.util.Map;
 
-public interface EventMessage<C> {
-
-    C getContent();
+public interface EventAcknowledgment {
 
     ZonedDateTime getTimestamp();
-
-    Map<String, String> getHeaders();
 
 }
