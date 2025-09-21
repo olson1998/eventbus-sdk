@@ -11,6 +11,8 @@
     <modules>
         <module>eventbus-common</module>
         <module>eventbus-publisher</module>
+        <module>eventbus-kafka-common</module>
+        <module>eventbus-kafka-publisher</module>
     </modules>
 
     <parent>
@@ -50,6 +52,16 @@
             <dependency>
                 <groupId>com.olsonsolution.eventbus</groupId>
                 <artifactId>eventbus-publisher</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.olsonsolution.eventbus</groupId>
+                <artifactId>eventbus-kafka-common</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.olsonsolution.eventbus</groupId>
+                <artifactId>eventbus-kafka-publisher</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

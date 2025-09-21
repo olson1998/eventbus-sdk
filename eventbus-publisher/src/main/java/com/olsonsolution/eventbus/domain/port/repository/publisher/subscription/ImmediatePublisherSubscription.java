@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.port.repository.publisher.subscription;
 
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
-public interface ImmediatePublisherSubscription<D extends EventDestination> extends PublisherSubscription<D> {
+public interface ImmediatePublisherSubscription<M extends SubscriptionMetadata> extends PublisherSubscription<M> {
 }

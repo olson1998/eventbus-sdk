@@ -13,6 +13,7 @@ import java.util.Arrays;
 public enum MemberTypes implements MemberType {
 
     ALL('A'),
+    FIRST('F'),
     NODE('N'),
     NODE_GROUP('G'),
     TENANT('T');

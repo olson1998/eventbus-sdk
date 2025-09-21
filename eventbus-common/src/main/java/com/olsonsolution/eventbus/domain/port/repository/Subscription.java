@@ -2,9 +2,9 @@ package com.olsonsolution.eventbus.domain.port.repository;
 
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
-public interface Subscription {
+public interface Subscription<M extends SubscriptionMetadata> {
 
-    SubscriptionMetadata getMetadata();
+    M getMetadata();
 
     void renew();
 

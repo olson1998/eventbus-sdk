@@ -1,10 +1,10 @@
 package com.olsonsolution.eventbus.domain.port.repository.publisher.subscription;
 
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.time.Duration;
 
-public interface BatchingPublisherSubscription<D extends EventDestination> extends PublisherSubscription<D> {
+public interface BatchingPublisherSubscription<M extends SubscriptionMetadata> extends PublisherSubscription<M> {
 
     int getBatchSize();
 

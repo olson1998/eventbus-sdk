@@ -3,13 +3,13 @@ package com.olsonsolution.eventbus.domain.port.repository.publisher;
 import com.olsonsolution.eventbus.domain.port.repository.Participant;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.PublisherSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface EventPublisher<C, D extends EventDestination, S extends PublisherSubscription<D>>
-        extends Participant<S> {
+public interface EventPublisher<C, S extends PublisherSubscription<M>, M extends SubscriptionMetadata>
+        extends Participant<S, M> {
 
     /**
      * Publishes an event message to its intended destination.

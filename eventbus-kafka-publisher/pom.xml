@@ -9,12 +9,23 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>eventbus-common</artifactId>
+    <artifactId>eventbus-kafka-publisher</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.olsonsolution.eventbus</groupId>
+            <artifactId>eventbus-publisher</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.olsonsolution.eventbus</groupId>
+            <artifactId>eventbus-kafka-common</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>
