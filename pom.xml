@@ -6,7 +6,11 @@
 
     <groupId>com.olsonsolution.eventbus</groupId>
     <artifactId>eventbus-sdk</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>eventbus-common</module>
+    </modules>
 
     <parent>
         <groupId>com.olsonsolution.common</groupId>
@@ -15,10 +19,29 @@
     </parent>
 
     <properties>
+        <revision>0.1.0-SNAPSHOT</revision>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+
+    </dependencyManagement>
 
     <build>
         <pluginManagement>
