@@ -1,7 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
-import com.olsonsolution.eventbus.domain.port.repository.publisher.EventPublisher;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatcher;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.KafkaPublisherSubscription;
@@ -17,15 +16,13 @@ import reactor.kafka.sender.SenderResult;
 import java.util.UUID;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class KafkaEventPublisher<C, S extends KafkaPublisherSubscription>
-        implements EventPublisher<C, S, KafkaSubscriptionMetadata> {
+public abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
+        implements EventDispatcher<C, S, KafkaSubscriptionMetadata> {
 
     @Getter
     private S subscription;
 
     private final KafkaSender<String, C> kafkaSender;
-
-    private final EventDestination eventDestination;
 
     @Override
     public void subscribe() {
