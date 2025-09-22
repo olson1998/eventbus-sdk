@@ -13,6 +13,8 @@
         <module>eventbus-publisher</module>
         <module>eventbus-kafka-common</module>
         <module>eventbus-kafka-publisher</module>
+        <module>eventbus-subscriber</module>
+        <module>eventbus-kafka-subscriber</module>
     </modules>
 
     <parent>
