@@ -18,9 +18,6 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class StandardEventPublisher<C> implements EventPublisher<C> {
 
-    @Getter
-    private UUID id;
-
     private final EventDispatcher<C, PublisherSubscription<?>, ?> eventDispatcher;
 
     @Getter
@@ -29,20 +26,33 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     @Override
     public CompletableFuture<List<EventAcknowledgment>> publish(EventMessage<C> message) {
         return eventDispatcher.dispatch(message)
+                .doOnNext(this::logEventAcknowledged)
+                .doOnError(this::logEventDispatchFailed)
                 .toFuture();
     }
 
     @Override
     public void register() {
         log.info("Registering publisher for destination={}", destination);
-        id = eventDispatcher.getSubscription().registerPublisher();
+        eventDispatcher.getSubscription().register();
+        UUID id = eventDispatcher.getSubscription().getSubscriptionId();
         log.info("Registered publisher {} for destination={}", id, destination);
     }
 
     @Override
     public void unregister() {
+        UUID id = eventDispatcher.getSubscription().getSubscriptionId();
         log.info("Unregistering publisher {} for destination={}", id, destination);
-        eventDispatcher.getSubscription().unregisterPublisher();
+        eventDispatcher.getSubscription().unregister();
         log.info("Unregistered publisher {} for destination={}", id, destination);
     }
+
+    private void logEventAcknowledged(List<EventAcknowledgment> acknowledgments) {
+        log.info("Event acknowledged for destination={} with {} acknowledgments", destination, acknowledgments.size());
+    }
+
+    private void logEventDispatchFailed(Throwable throwable) {
+        log.error("Event dispatch failed for destination={}, reason:", destination, throwable);
+    }
+
 }

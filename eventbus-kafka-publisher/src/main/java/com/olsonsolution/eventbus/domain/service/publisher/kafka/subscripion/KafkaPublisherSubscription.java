@@ -13,6 +13,9 @@ import java.util.UUID;
 public class KafkaPublisherSubscription implements PublisherSubscription<KafkaSubscriptionMetadata> {
 
     @Getter
+    private UUID subscriptionId;
+
+    @Getter
     private KafkaSubscriptionMetadata metadata;
 
     @Getter
@@ -22,16 +25,16 @@ public class KafkaPublisherSubscription implements PublisherSubscription<KafkaSu
 
     @Override
     public void renew() {
-
+        metadata = kafkaEventbusManager.renewSubscription(subscriptionId);
     }
 
     @Override
-    public UUID registerPublisher() {
-        return null;
+    public void register() {
+        metadata = kafkaEventbusManager.registerSubscription(destination);
     }
 
     @Override
-    public void unregisterPublisher() {
-
+    public void unregister() {
+        kafkaEventbusManager.unreqisterSubscription(subscriptionId);
     }
 }

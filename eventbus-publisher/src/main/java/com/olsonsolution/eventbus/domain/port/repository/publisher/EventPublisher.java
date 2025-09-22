@@ -6,12 +6,9 @@ import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public interface EventPublisher<C> extends Participant {
-
-    UUID getId();
 
     EventDestination getDestination();
 

@@ -8,10 +8,12 @@ import java.util.UUID;
 
 public interface PublisherSubscription<M extends SubscriptionMetadata> extends Subscription<M> {
 
+    UUID getSubscriptionId();
+
     EventDestination getDestination();
 
-    UUID registerPublisher();
+    void register();
 
-    void unregisterPublisher();
+    void unregister();
 
 }
