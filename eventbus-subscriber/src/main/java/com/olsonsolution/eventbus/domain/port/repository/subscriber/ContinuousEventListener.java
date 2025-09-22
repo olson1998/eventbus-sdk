@@ -5,7 +5,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.concurrent.ScheduledFuture;
 
-public interface ContinousEventListener<M extends SubscriptionMetadata>
+public interface ContinuousEventListener<M extends SubscriptionMetadata>
         extends EventListener<ContinousSubscriberSubscription<M>, M> {
 
     ScheduledFuture<?> continousReceive();

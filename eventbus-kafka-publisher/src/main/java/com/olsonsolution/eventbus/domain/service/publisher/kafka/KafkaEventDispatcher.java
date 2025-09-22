@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
+abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
         implements EventDispatcher<C, S, KafkaSubscriptionMetadata> {
 
     @Getter

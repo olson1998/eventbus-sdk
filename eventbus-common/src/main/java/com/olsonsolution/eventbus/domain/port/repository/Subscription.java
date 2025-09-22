@@ -12,4 +12,8 @@ public interface Subscription<M extends SubscriptionMetadata> {
 
     void renew();
 
+    void register();
+
+    void unregister();
+
 }
