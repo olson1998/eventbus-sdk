@@ -2,5 +2,10 @@ package com.olsonsolution.eventbus.domain.port.repository.subscriber.subscriptio
 
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
+import java.time.Duration;
+
 public interface ContinousSubscriberSubscription<M extends SubscriptionMetadata> extends SubscriberSubscription<M> {
+
+    Duration getReceiveInterval();
+
 }
