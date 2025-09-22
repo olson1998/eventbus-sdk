@@ -17,4 +17,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.olsonsolution.eventbus</groupId>
+            <artifactId>eventbus-subscriber</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.olsonsolution.eventbus</groupId>
+            <artifactId>eventbus-kafka-common</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>

@@ -58,12 +58,22 @@
             </dependency>
             <dependency>
                 <groupId>com.olsonsolution.eventbus</groupId>
+                <artifactId>eventbus-subscriber</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.olsonsolution.eventbus</groupId>
                 <artifactId>eventbus-kafka-common</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.olsonsolution.eventbus</groupId>
                 <artifactId>eventbus-kafka-publisher</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.olsonsolution.eventbus</groupId>
+                <artifactId>eventbus-kafka-subscriber</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>
