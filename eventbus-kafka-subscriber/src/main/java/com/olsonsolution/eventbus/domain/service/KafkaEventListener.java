@@ -2,38 +2,59 @@ package com.olsonsolution.eventbus.domain.service;
 
 import com.olsonsolution.eventbus.domain.model.ConsumedKafkaEventMessage;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
-import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventSubscriber;
+import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
+import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
+import com.olsonsolution.eventbus.domain.service.subscription.KafkaSubscriberSubscription;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.time.ZoneOffset.UTC;
 import static java.util.Map.entry;
 
+@Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-abstract class KafkaEventSubscriber<P extends EventProcessor> implements EventSubscriber<P> {
+abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
+        implements EventListener<S, KafkaSubscriptionMetadata> {
 
-    private final P eventProcessor;
+    @Getter
+    private boolean closed;
+
+    @Getter
+    private final S subscription;
 
     private final KafkaReceiver<String, Object> kafkaReceiver;
 
-    @Override
-    public void receive() {
-        kafkaReceiver.receive()
-                .map(this::mapToEventMessage)
-                .doOnNext(eventProcessor::onEvent)
-                .collectList()
-                .toFuture();
+    protected Flux<EventMessage<?>> consume() {
+        return kafkaReceiver.receive()
+                .map(this::mapToEventMessage);
+    }
+
+    protected Mono<Integer> processEventAndEmitStatus(EventMessage<?> eventMessage, EventProcessor eventProcessor) {
+        return Mono.fromSupplier(() -> processEvent(eventMessage, eventProcessor))
+                .doOnError(this::onErrorLog)
+                .onErrorResume(Exception.class, e -> Mono.just(500));
+    }
+
+    private int processEvent(EventMessage<?> eventMessage, EventProcessor eventProcessor) {
+        eventProcessor.onEvent(eventMessage);
+        return 200;
     }
 
     private EventMessage<?> mapToEventMessage(ReceiverRecord<String, Object> receiverRecord) {
@@ -58,4 +79,21 @@ abstract class KafkaEventSubscriber<P extends EventProcessor> implements EventSu
         return entry(header.key(), new String(header.value()));
     }
 
+    private void onErrorLog(Throwable throwable) {
+        UUID subscriptionId = getSubscription().getSubscriptionId();
+        log.error("Event listener subscription={} caught processing error:", subscriptionId, throwable);
+    }
+
+    private Consumer<String, Object> closeConsumer(Consumer<String, Object> kafkaConsumer) {
+        kafkaConsumer.close();
+        return kafkaConsumer;
+    }
+
+    @Override
+    public void close() throws Exception {
+        kafkaReceiver.doOnConsumer(this::closeConsumer)
+                .then()
+                .block();
+        closed = true;
+    }
 }

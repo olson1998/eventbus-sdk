@@ -30,7 +30,7 @@ public class KafkaPublisherSubscription implements PublisherSubscription<KafkaSu
 
     @Override
     public void register() {
-        metadata = kafkaEventbusManager.registerSubscription(destination);
+        metadata = kafkaEventbusManager.registerPublisher(destination);
     }
 
     @Override

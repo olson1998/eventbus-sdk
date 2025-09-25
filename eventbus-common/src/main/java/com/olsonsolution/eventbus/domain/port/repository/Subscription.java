@@ -8,8 +8,6 @@ public interface Subscription<M extends SubscriptionMetadata> {
 
     UUID getSubscriptionId();
 
-    M getMetadata();
-
     void renew();
 
     void register();

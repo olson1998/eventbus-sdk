@@ -6,6 +6,8 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 public interface PublisherSubscription<M extends SubscriptionMetadata> extends Subscription<M> {
 
+    M getMetadata();
+
     EventDestination getDestination();
 
 }

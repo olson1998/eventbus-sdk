@@ -6,6 +6,10 @@ import java.time.Duration;
 
 public interface ContinousSubscriberSubscription<M extends SubscriptionMetadata> extends SubscriberSubscription<M> {
 
+    boolean isStopped();
+
     Duration getReceiveInterval();
+
+    void stop();
 
 }

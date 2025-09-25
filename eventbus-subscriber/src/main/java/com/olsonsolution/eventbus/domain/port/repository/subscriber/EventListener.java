@@ -1,16 +1,18 @@
 package com.olsonsolution.eventbus.domain.port.repository.subscriber;
 
+import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
-import java.time.Duration;
-import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
-public interface EventListener<S extends SubscriberSubscription<M>, M extends SubscriptionMetadata> {
+public interface EventListener<S extends SubscriberSubscription<M>, M extends SubscriptionMetadata>
+        extends AutoCloseable {
+
+    boolean isClosed();
 
     S getSubscription();
 
-    Collection<? extends EventMessage<?>> receive(Duration listeningDuration);
+    CompletableFuture<Void> receive(EventProcessor eventProcessor);
 
 }
