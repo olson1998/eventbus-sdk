@@ -6,12 +6,15 @@ import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventSubscri
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @RequiredArgsConstructor
-public abstract class StandardEventSubscriber<P extends EventProcessor> implements EventSubscriber<P> {
+public class StandardEventSubscriber<P extends EventProcessor> implements EventSubscriber<P> {
 
     private final P eventProcessor;
 
@@ -36,14 +39,18 @@ public abstract class StandardEventSubscriber<P extends EventProcessor> implemen
 
     @Override
     public void register() {
-
+        log.info("Registering subscriber");
+        eventListener.getSubscription().register();
+        log.info("Registered subscriber: {}", eventListener.getSubscription().getSubscriptionId());
     }
 
     @Override
     public void unregister() {
-
+        UUID id = eventListener.getSubscription().getSubscriptionId();
+        Collection<EventDestination> destinations = getSubscribedDestinations();
+        log.info("Unregistering subscriber {} for destinations={}", id, destinations);
+        eventListener.getSubscription().unregister();
+        log.info("Unregistered subscriber {} for destinations={}", id, destinations);
     }
-
-    protected abstract EventListener<SubscriberSubscription<?>, ?> createEventListener(EventDestination destination);
 
 }
