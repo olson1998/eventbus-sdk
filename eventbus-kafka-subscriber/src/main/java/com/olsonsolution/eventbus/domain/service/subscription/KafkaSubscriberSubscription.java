@@ -19,8 +19,7 @@ public class KafkaSubscriberSubscription implements SubscriberSubscription<Kafka
     private final KafkaEventbusManager kafkaEventbusManager;
 
     @Getter
-    private final Map<KafkaSubscriptionMetadata, Collection<EventDestination>> subscribedDestinations =
-            new ConcurrentHashMap<>();
+    private final Map<EventDestination, KafkaSubscriptionMetadata> subscribedDestinations = new ConcurrentHashMap<>();
 
     @Override
     public void onMetadataUpdate(KafkaSubscriptionMetadata metadata, EventDestination destination) {
@@ -43,7 +42,7 @@ public class KafkaSubscriberSubscription implements SubscriberSubscription<Kafka
     }
 
     @Override
-    public void subscribe(EventDestination destination) {
+    public KafkaSubscriptionMetadata subscribe(EventDestination destination) {
         KafkaSubscriptionMetadata kafkaSubscriptionMetadata =
                 kafkaEventbusManager.subscribeDestination(subscriptionId, destination);
         Collection<EventDestination> eventDestinations = subscribedDestinations.computeIfAbsent(

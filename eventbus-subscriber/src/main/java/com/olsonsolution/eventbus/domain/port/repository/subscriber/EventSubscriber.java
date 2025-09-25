@@ -5,13 +5,14 @@ import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcesso
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
 public interface EventSubscriber<P extends EventProcessor> extends Participant {
 
-    Collection<? extends EventDestination> getSubscribedDestinations();
+    Collection<EventDestination> getSubscribedDestinations();
 
     void subscribe(EventDestination destination);
 
-    void receive();
+    CompletableFuture<Void> receive();
 
 }
