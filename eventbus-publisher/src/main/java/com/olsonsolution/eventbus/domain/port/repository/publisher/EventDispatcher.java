@@ -8,7 +8,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-public interface EventDispatcher<C, S extends PublisherSubscription<M>, M extends SubscriptionMetadata> {
+public interface EventDispatcher<C, S extends PublisherSubscription<M>, M extends SubscriptionMetadata>
+        extends AutoCloseable {
 
     S getSubscription();
 

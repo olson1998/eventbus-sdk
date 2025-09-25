@@ -140,4 +140,8 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
         );
     }
 
+    @Override
+    public void close() throws Exception {
+        kafkaSender.close();
+    }
 }

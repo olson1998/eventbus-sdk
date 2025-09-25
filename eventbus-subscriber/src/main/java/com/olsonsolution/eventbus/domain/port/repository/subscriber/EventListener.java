@@ -18,4 +18,6 @@ public interface EventListener<S extends SubscriberSubscription<M>, M extends Su
 
     void subscribe(EventDestination destination);
 
+    void unsubscribe(EventDestination destination);
+
 }

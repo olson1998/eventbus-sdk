@@ -13,6 +13,8 @@ public interface EventSubscriber<P extends EventProcessor> extends Participant {
 
     void subscribe(EventDestination destination);
 
+    void unsubscribe(EventDestination destination);
+
     CompletableFuture<Void> receive();
 
 }

@@ -5,6 +5,7 @@ import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListene
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventSubscriber;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,6 +16,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 @RequiredArgsConstructor
 public class StandardEventSubscriber<P extends EventProcessor> implements EventSubscriber<P> {
+
+    @Getter
+    private boolean closed;
 
     private final P eventProcessor;
 
@@ -29,7 +33,18 @@ public class StandardEventSubscriber<P extends EventProcessor> implements EventS
 
     @Override
     public void subscribe(EventDestination destination) {
+        UUID id = eventListener.getSubscription().getSubscriptionId();
+        log.info("Subscriber {} Subscribing to destination: {}", id, destination);
         eventListener.subscribe(destination);
+        log.info("Subscriber {} Subscribed to destination: {}", id, destination);
+    }
+
+    @Override
+    public void unsubscribe(EventDestination destination) {
+        UUID id = eventListener.getSubscription().getSubscriptionId();
+        log.info("Subscriber {} unsubscribing to destination: {}", id, destination);
+        eventListener.subscribe(destination);
+        log.info("Subscriber {} unsubscribed to destination: {}", id, destination);
     }
 
     @Override
@@ -53,4 +68,16 @@ public class StandardEventSubscriber<P extends EventProcessor> implements EventS
         log.info("Unregistered subscriber {} for destinations={}", id, destinations);
     }
 
+    @Override
+    public void onDestinationDestroyed(EventDestination destination) {
+        UUID id = eventListener.getSubscription().getSubscriptionId();
+        log.info("Unsubscribing subscription {} from destination={} due to destination destruction", id, destination);
+        unsubscribe(destination);
+    }
+
+    @Override
+    public void close() throws Exception {
+        eventListener.close();
+        closed = true;
+    }
 }

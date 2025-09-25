@@ -18,6 +18,9 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class StandardEventPublisher<C> implements EventPublisher<C> {
 
+    @Getter
+    private boolean closed;
+
     private final EventDispatcher<C, PublisherSubscription<?>, ?> eventDispatcher;
 
     @Getter
@@ -47,6 +50,16 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
         log.info("Unregistered publisher {} for destination={}", id, destination);
     }
 
+    @Override
+    public void onDestinationDestroyed(EventDestination destination) {
+        log.info("Destination {} destroyed, closing publisher", destination);
+        try {
+            close();
+        } catch (Exception e) {
+            log.error("Error closing publisher for destination={}", destination, e);
+        }
+    }
+
     private void logEventAcknowledged(List<EventAcknowledgment> acknowledgments) {
         log.info("Event acknowledged for destination={} with {} acknowledgments", destination, acknowledgments.size());
     }
@@ -55,4 +68,12 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
         log.error("Event dispatch failed for destination={}, reason:", destination, throwable);
     }
 
+    @Override
+    public void close() throws Exception {
+        UUID id = eventDispatcher.getSubscription().getSubscriptionId();
+        log.info("Closing publisher {} for destination={}", id, destination);
+        eventDispatcher.close();
+        log.info("Closed publisher {} for destination={}", id, destination);
+        closed = true;
+    }
 }

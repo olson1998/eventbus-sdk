@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static java.time.ZoneOffset.UTC;
@@ -51,6 +50,15 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
     public void subscribe(EventDestination destination) {
         KafkaSubscriptionMetadata metadata = subscription.subscribe(destination);
         onPositionOnTopicPartition(metadata);
+    }
+
+    @Override
+    public void unsubscribe(EventDestination destination) {
+        KafkaSubscriptionMetadata metadata = subscription.getSubscribedDestinations()
+                .get(destination);
+        if (metadata != null) {
+            onPauseTopicPartition(metadata);
+        }
     }
 
     protected Flux<EventMessage<?>> consume() {
@@ -96,7 +104,28 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         log.error("Event listener subscription={} caught processing error:", subscriptionId, throwable);
     }
 
+    private void onPauseTopicPartition(KafkaSubscriptionMetadata metadata) {
+        Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
+        kafkaReceiver.doOnConsumer(kafkaConsumer -> {
+            kafkaConsumer.pause(topicPartitions);
+            return kafkaConsumer;
+        }).then().block();
+    }
+
     private void onPositionOnTopicPartition(KafkaSubscriptionMetadata metadata) {
+        Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
+        kafkaReceiver.doOnConsumer(kafkaConsumer -> {
+            topicPartitions.forEach(kafkaConsumer::position);
+            return kafkaConsumer;
+        }).then().block();
+    }
+
+    private Consumer<String, Object> closeConsumer(Consumer<String, Object> kafkaConsumer) {
+        kafkaConsumer.close();
+        return kafkaConsumer;
+    }
+
+    private Collection<TopicPartition> collectTopicPartitions(KafkaSubscriptionMetadata metadata) {
         Collection<TopicPartition> topicPartitions;
         String topic = metadata.getTopic();
         if (CollectionUtils.isNotEmpty(metadata.getPartition())) {
@@ -107,15 +136,7 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         } else {
             topicPartitions = Collections.singleton(new TopicPartition(topic, 0));
         }
-        kafkaReceiver.doOnConsumer(kafkaConsumer -> {
-            topicPartitions.forEach(kafkaConsumer::position);
-            return kafkaConsumer;
-        }).then().block();
-    }
-
-    private Consumer<String, Object> closeConsumer(Consumer<String, Object> kafkaConsumer) {
-        kafkaConsumer.close();
-        return kafkaConsumer;
+        return topicPartitions;
     }
 
     @Override
