@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface EventbusManager<M extends SubscriptionMetadata> {
 
-    M registerPublisher(EventDestination destination);
+    M registerPublisher(UUID subscriptionId, EventDestination destination);
 
     UUID registerSubscriber();
 

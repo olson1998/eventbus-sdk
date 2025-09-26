@@ -15,6 +15,7 @@
         <module>eventbus-kafka-publisher</module>
         <module>eventbus-subscriber</module>
         <module>eventbus-kafka-subscriber</module>
+        <module>eventbus-kafka-integration-test</module>
     </modules>
 
     <parent>
