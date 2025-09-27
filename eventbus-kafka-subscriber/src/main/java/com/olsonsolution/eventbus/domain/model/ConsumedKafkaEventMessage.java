@@ -1,6 +1,9 @@
 package com.olsonsolution.eventbus.domain.model;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.time.ZonedDateTime;
 import java.util.Map;
@@ -10,22 +13,26 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 public class ConsumedKafkaEventMessage<C> extends StandardEventMessage<C> {
 
-    private final String topic;
+    private final String key;
 
-    private final long offset;
+    private final String topic;
 
     private final int partition;
 
-    @Builder(builderMethodName = "consumedKafkaEventBuilder")
+    private final long offset;
+
+    @Builder(builderMethodName = "consumedKafkaEventMessageBuilder")
     public ConsumedKafkaEventMessage(C content,
-                                     @Singular("header") Map<String, Object> headers,
+                                     Map<String, Object> headers,
                                      ZonedDateTime timestamp,
+                                     String key,
                                      String topic,
-                                     long offset,
-                                     int partition) {
+                                     int partition,
+                                     long offset) {
         super(content, headers, timestamp);
+        this.key = key;
         this.topic = topic;
-        this.offset = offset;
         this.partition = partition;
+        this.offset = offset;
     }
 }

@@ -1,28 +1,29 @@
 package com.olsonsolution.eventbus.domain.service;
 
+import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.service.subscription.ContinuousKafkaSubscriberSubscription;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.kafka.receiver.KafkaReceiver;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class ContinuousKafkaEventListener extends KafkaEventListener<ContinuousKafkaSubscriberSubscription> {
+public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, ContinuousKafkaSubscriberSubscription> {
 
     private final AtomicBoolean stopped = new AtomicBoolean(true);
 
-    public ContinuousKafkaEventListener(ContinuousKafkaSubscriberSubscription subscription,
-                                        KafkaReceiver<String, Object> kafkaReceiver) {
-        super(subscription, kafkaReceiver);
+    public ContinuousKafkaEventListener(Class<C> contentClass,
+                                        ContinuousKafkaSubscriberSubscription subscription,
+                                        KafkaFactory kafkaFactory) {
+        super(contentClass, subscription, kafkaFactory);
     }
 
     @Override
-    public CompletableFuture<Void> receive(EventProcessor eventProcessor) {
+    public CompletableFuture<Void> receive(EventProcessor<C> eventProcessor) {
         ContinuousKafkaSubscriberSubscription sub = getSubscription();
         Duration consumeInterval = sub.getReceiveInterval();
         stopped.set(sub.isStopped());
@@ -33,7 +34,7 @@ public class ContinuousKafkaEventListener extends KafkaEventListener<ContinuousK
                 .toFuture();
     }
 
-    private Mono<Void> consumeOnIntervals(EventProcessor eventProcessor) {
+    private Mono<Void> consumeOnIntervals(EventProcessor<C> eventProcessor) {
         if (stopped.get()) {
             return Mono.empty();
         } else {

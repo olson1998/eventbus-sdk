@@ -4,6 +4,8 @@ import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaEventDeserializer;
 import lombok.RequiredArgsConstructor;
 
+import java.io.IOException;
+
 @RequiredArgsConstructor
 public class StandardKafkaEventDeserializer<T> implements KafkaEventDeserializer<T> {
 
@@ -13,6 +15,10 @@ public class StandardKafkaEventDeserializer<T> implements KafkaEventDeserializer
 
     @Override
     public T deserialize(String s, byte[] bytes) {
-        return eventMapper.readValue(bytes, tClass);
+        try {
+            return eventMapper.readValue(bytes, tClass);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

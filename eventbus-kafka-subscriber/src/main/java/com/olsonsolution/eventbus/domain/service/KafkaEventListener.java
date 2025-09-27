@@ -1,6 +1,7 @@
 package com.olsonsolution.eventbus.domain.service;
 
 import com.olsonsolution.eventbus.domain.model.ConsumedKafkaEventMessage;
+import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
@@ -24,10 +26,7 @@ import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.time.ZoneOffset.UTC;
@@ -35,55 +34,79 @@ import static java.util.Map.entry;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
-        implements EventListener<S, KafkaSubscriptionMetadata> {
+abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
+        implements EventListener<C, S, KafkaSubscriptionMetadata> {
 
     @Getter
     private boolean closed;
 
     @Getter
+    private final Class<C> contentClass;
+
+    @Getter
     private final S subscription;
 
-    private final KafkaReceiver<String, Object> kafkaReceiver;
+    private final KafkaFactory kafkaFactory;
+
+    private final Map<KafkaReceiver<String, C>, Collection<KafkaSubscriptionMetadata>> kafkaReceivers =
+            new HashMap<>();
 
     @Override
     public void subscribe(EventDestination destination) {
         KafkaSubscriptionMetadata metadata = subscription.subscribe(destination);
-        onPositionOnTopicPartition(metadata);
+        KafkaReceiver<String, C> kafkaReceiver = findReceiverByMetadata(metadata)
+                .orElseGet(() -> kafkaFactory.fabricateReceiver(
+                        subscription.getSubscriptionId(),
+                        destination,
+                        contentClass
+                ));
+        kafkaReceivers.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
+                .add(metadata);
+        onPositionOnTopicPartition(kafkaReceiver, metadata);
     }
 
     @Override
     public void unsubscribe(EventDestination destination) {
-        KafkaSubscriptionMetadata metadata = subscription.getSubscribedDestinations()
-                .get(destination);
-        if (metadata != null) {
-            onPauseTopicPartition(metadata);
+        KafkaSubscriptionMetadata metadata = subscription.getSubscribedDestinations().get(destination);
+        if (metadata == null) {
+            return;
         }
+        findReceiverByMetadata(metadata).ifPresentOrElse(kafkaReceiver -> {
+            onPauseTopicPartition(kafkaReceiver, metadata);
+        }, () -> {
+
+        });
     }
 
-    protected Flux<EventMessage<?>> consume() {
-        return kafkaReceiver.receive()
-                .map(this::mapToEventMessage);
+    protected Flux<EventMessage<C>> consume() {
+        return Flux.fromIterable(kafkaReceivers.keySet())
+                .flatMap(this::consumeFromReceiver);
     }
 
-    protected Mono<Integer> processEventAndEmitStatus(EventMessage<?> eventMessage, EventProcessor eventProcessor) {
+    protected Mono<Integer> processEventAndEmitStatus(EventMessage<C> eventMessage, EventProcessor<C> eventProcessor) {
         return Mono.fromSupplier(() -> processEvent(eventMessage, eventProcessor))
                 .doOnError(this::onErrorLog)
                 .onErrorResume(Exception.class, e -> Mono.just(500));
     }
 
-    private int processEvent(EventMessage<?> eventMessage, EventProcessor eventProcessor) {
+    private int processEvent(EventMessage<C> eventMessage, EventProcessor<C> eventProcessor) {
         eventProcessor.onEvent(eventMessage);
         return 200;
     }
 
-    private EventMessage<?> mapToEventMessage(ReceiverRecord<String, Object> receiverRecord) {
-        return ConsumedKafkaEventMessage.consumedKafkaEventBuilder()
-                .topic(receiverRecord.topic())
-                .offset(receiverRecord.offset())
-                .partition(receiverRecord.partition())
-                .timestamp(ZonedDateTime.ofInstant(Instant.ofEpochMilli(receiverRecord.timestamp()), UTC))
+    private Flux<EventMessage<C>> consumeFromReceiver(KafkaReceiver<String, C> kafkaReceiver) {
+        return kafkaReceiver.receive()
+                .map(this::mapToEventMessage);
+    }
+
+    private EventMessage<C> mapToEventMessage(ReceiverRecord<String, C> receiverRecord) {
+        return ConsumedKafkaEventMessage.<C>consumedKafkaEventMessageBuilder()
+                .key(receiverRecord.key())
                 .content(receiverRecord.value())
+                .topic(receiverRecord.topic())
+                .partition(receiverRecord.partition())
+                .offset(receiverRecord.offset())
+                .timestamp(ZonedDateTime.ofInstant(Instant.ofEpochMilli(receiverRecord.timestamp()), UTC))
                 .headers(mapToHeaders(receiverRecord.headers()))
                 .build();
     }
@@ -92,7 +115,10 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         return IteratorUtils.toList(headers.iterator())
                 .stream()
                 .map(this::mapToHeader)
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue),
+                        MapUtils::unmodifiableMap
+                ));
     }
 
     private Map.Entry<String, Object> mapToHeader(Header header) {
@@ -104,7 +130,8 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         log.error("Event listener subscription={} caught processing error:", subscriptionId, throwable);
     }
 
-    private void onPauseTopicPartition(KafkaSubscriptionMetadata metadata) {
+    private void onPauseTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
+                                       KafkaSubscriptionMetadata metadata) {
         Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
         kafkaReceiver.doOnConsumer(kafkaConsumer -> {
             kafkaConsumer.pause(topicPartitions);
@@ -112,7 +139,8 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         }).then().block();
     }
 
-    private void onPositionOnTopicPartition(KafkaSubscriptionMetadata metadata) {
+    private void onPositionOnTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
+                                            KafkaSubscriptionMetadata metadata) {
         Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
         kafkaReceiver.doOnConsumer(kafkaConsumer -> {
             topicPartitions.forEach(kafkaConsumer::position);
@@ -120,7 +148,7 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         }).then().block();
     }
 
-    private Consumer<String, Object> closeConsumer(Consumer<String, Object> kafkaConsumer) {
+    private Consumer<String, C> closeConsumer(Consumer<String, C> kafkaConsumer) {
         kafkaConsumer.close();
         return kafkaConsumer;
     }
@@ -139,11 +167,21 @@ abstract class KafkaEventListener<S extends KafkaSubscriberSubscription>
         return topicPartitions;
     }
 
+    private Optional<KafkaReceiver<String, C>> findReceiverByMetadata(KafkaSubscriptionMetadata metadata) {
+        return kafkaReceivers.entrySet()
+                .stream()
+                .filter(receiverSubscriptions -> receiverSubscriptions.getValue().contains(metadata))
+                .findFirst()
+                .map(Map.Entry::getKey);
+    }
+
     @Override
     public void close() throws Exception {
-        kafkaReceiver.doOnConsumer(this::closeConsumer)
-                .then()
-                .block();
+        for (KafkaReceiver<String, C> kafkaReceiver : kafkaReceivers.keySet()) {
+            kafkaReceiver.doOnConsumer(this::closeConsumer)
+                    .then()
+                    .block();
+        }
         closed = true;
     }
 }

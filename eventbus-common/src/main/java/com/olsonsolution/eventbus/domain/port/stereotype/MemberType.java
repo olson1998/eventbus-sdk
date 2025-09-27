@@ -4,7 +4,9 @@ public interface MemberType {
 
     String name();
 
-    char getIdentifier();
+    char getShortIdentifier();
+
+    String getIdentifier();
 
     boolean isEqualTo(MemberType memberType);
 

@@ -7,14 +7,16 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface EventListener<S extends SubscriberSubscription<M>, M extends SubscriptionMetadata>
+public interface EventListener<C, S extends SubscriberSubscription<M>, M extends SubscriptionMetadata>
         extends AutoCloseable {
 
     boolean isClosed();
 
+    Class<C> getContentClass();
+
     S getSubscription();
 
-    CompletableFuture<Void> receive(EventProcessor eventProcessor);
+    CompletableFuture<Void> receive(EventProcessor<C> eventProcessor);
 
     void subscribe(EventDestination destination);
 

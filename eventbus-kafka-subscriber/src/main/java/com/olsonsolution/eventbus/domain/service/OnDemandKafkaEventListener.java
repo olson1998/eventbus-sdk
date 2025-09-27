@@ -1,25 +1,25 @@
 package com.olsonsolution.eventbus.domain.service;
 
+import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.service.subscription.OnDemandKafkaSubscriberSubscription;
-import reactor.core.publisher.Mono;
-import reactor.kafka.receiver.KafkaReceiver;
 
 import java.util.concurrent.CompletableFuture;
 
-public class OnDemandKafkaEventListener extends KafkaEventListener<OnDemandKafkaSubscriberSubscription> {
+public class OnDemandKafkaEventListener<C> extends KafkaEventListener<C, OnDemandKafkaSubscriberSubscription> {
 
-    public OnDemandKafkaEventListener(OnDemandKafkaSubscriberSubscription subscription,
-                                      KafkaReceiver<String, Object> kafkaReceiver) {
-        super(subscription, kafkaReceiver);
+    public OnDemandKafkaEventListener(Class<C> contentClass,
+                                      OnDemandKafkaSubscriberSubscription subscription,
+                                      KafkaFactory kafkaFactory) {
+        super(contentClass, subscription, kafkaFactory);
     }
 
     @Override
-    public CompletableFuture<Void> receive(EventProcessor eventProcessor) {
+    public CompletableFuture<Void> receive(EventProcessor<C> eventProcessor) {
         return consume()
-                .doOnNext(eventProcessor::onEvent)
+                .flatMap(eventMessage -> processEventAndEmitStatus(eventMessage, eventProcessor))
                 .collectList()
-                .flatMap(events -> Mono.<Void>empty())
+                .then()
                 .toFuture();
     }
 }

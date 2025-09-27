@@ -15,14 +15,14 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RequiredArgsConstructor
-public class StandardEventSubscriber<P extends EventProcessor> implements EventSubscriber<P> {
+public class StandardEventSubscriber<C> implements EventSubscriber<C> {
 
     @Getter
     private boolean closed;
 
-    private final P eventProcessor;
+    private final EventProcessor<C> eventProcessor;
 
-    private final EventListener<SubscriberSubscription<?>, ?> eventListener;
+    private final EventListener<C, SubscriberSubscription<?>, ?> eventListener;
 
     @Override
     public Collection<EventDestination> getSubscribedDestinations() {

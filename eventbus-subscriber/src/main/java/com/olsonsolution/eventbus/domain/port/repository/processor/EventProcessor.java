@@ -2,8 +2,8 @@ package com.olsonsolution.eventbus.domain.port.repository.processor;
 
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 
-public interface EventProcessor {
+public interface EventProcessor<C> {
 
-    void onEvent(EventMessage<?> eventMessage);
+    void onEvent(EventMessage<C> eventMessage);
 
 }

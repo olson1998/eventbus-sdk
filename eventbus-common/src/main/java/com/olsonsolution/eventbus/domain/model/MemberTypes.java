@@ -12,17 +12,18 @@ import java.util.Arrays;
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public enum MemberTypes implements MemberType {
 
-    ALL('A'),
-    FIRST('F'),
-    NODE('N'),
-    NODE_GROUP('G'),
-    TENANT('T');
+    ALL("all", 'A'),
+    FIRST_WINS("first_wins", 'F'),
+    NODE("node", 'N'),
+    NODE_GROUP("node_group", 'G'),
+    TENANT("tenant", 'T');
 
-    private final char identifier;
+    private final String identifier;
+    private final char shortIdentifier;
 
     public static MemberType fromIdentifier(char identifier) {
         return Arrays.stream(values())
-                .filter(memberType -> memberType.getIdentifier() == identifier)
+                .filter(memberType -> memberType.getShortIdentifier() == identifier)
                 .findFirst()
                 .orElseThrow(() -> new UnknownMemberTypeException(identifier));
     }
