@@ -11,6 +11,10 @@ import java.util.List;
 public interface EventDispatcher<C, S extends PublisherSubscription<M>, M extends SubscriptionMetadata>
         extends AutoCloseable {
 
+    void register();
+
+    void unregister();
+
     S getSubscription();
 
     Mono<List<EventAcknowledgment>> dispatch(EventMessage<C> message);

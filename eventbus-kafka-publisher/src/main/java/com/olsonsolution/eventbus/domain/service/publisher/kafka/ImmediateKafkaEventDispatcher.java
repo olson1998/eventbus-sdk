@@ -1,5 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
+import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.ImmediateKafkaPublisherSubscription;
@@ -10,10 +11,8 @@ import java.util.List;
 
 public class ImmediateKafkaEventDispatcher<C> extends KafkaEventDispatcher<C, ImmediateKafkaPublisherSubscription> {
 
-
-    public ImmediateKafkaEventDispatcher(ImmediateKafkaPublisherSubscription subscription,
-                                         KafkaSender<String, C> kafkaSender) {
-        super(subscription, kafkaSender);
+    public ImmediateKafkaEventDispatcher(ImmediateKafkaPublisherSubscription subscription, KafkaFactory kafkaFactory) {
+        super(subscription, kafkaFactory);
     }
 
     @Override

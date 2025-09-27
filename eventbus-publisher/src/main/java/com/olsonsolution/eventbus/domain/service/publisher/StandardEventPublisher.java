@@ -37,7 +37,7 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     @Override
     public void register() {
         log.info("Registering publisher for destination={}", destination);
-        eventDispatcher.getSubscription().register();
+        eventDispatcher.register();
         UUID id = eventDispatcher.getSubscription().getSubscriptionId();
         log.info("Registered publisher {} for destination={}", id, destination);
     }
@@ -46,7 +46,7 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     public void unregister() {
         UUID id = eventDispatcher.getSubscription().getSubscriptionId();
         log.info("Unregistering publisher {} for destination={}", id, destination);
-        eventDispatcher.getSubscription().unregister();
+        eventDispatcher.unregister();
         log.info("Unregistered publisher {} for destination={}", id, destination);
     }
 

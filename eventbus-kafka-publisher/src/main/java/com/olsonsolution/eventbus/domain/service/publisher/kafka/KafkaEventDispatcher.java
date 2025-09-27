@@ -2,6 +2,7 @@ package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
 import com.olsonsolution.eventbus.domain.model.exception.*;
 import com.olsonsolution.eventbus.domain.model.kafka.KafkaAcknowledgment;
+import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatcher;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
@@ -31,10 +32,28 @@ import java.util.stream.Stream;
 abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
         implements EventDispatcher<C, S, KafkaSubscriptionMetadata> {
 
+    private KafkaSender<String, C> kafkaSender;
+
     @Getter
     private final S subscription;
 
-    private final KafkaSender<String, C> kafkaSender;
+    private final KafkaFactory kafkaFactory;
+
+    @Override
+    public void register() {
+        if (kafkaSender == null) {
+            subscription.register();
+            kafkaSender = kafkaFactory.fabricateSender(subscription.getSubscriptionId());
+        }
+    }
+
+    @Override
+    public void unregister() {
+        if (kafkaSender != null) {
+            kafkaSender.close();
+            subscription.unregister();
+        }
+    }
 
     protected Mono<List<EventAcknowledgment>> dispatchSenderRecords(List<SenderRecord<String, C, UUID>> senderRecords) {
         return kafkaSender.send(Flux.fromIterable(senderRecords))

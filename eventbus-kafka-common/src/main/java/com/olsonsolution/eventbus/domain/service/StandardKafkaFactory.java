@@ -37,7 +37,7 @@ public class StandardKafkaFactory implements KafkaFactory {
     public <C> KafkaSender<String, C> fabricateSender(UUID subscriptionId) {
         StandardKafkaEventSerializer<C> kafkaEventSerializer = new StandardKafkaEventSerializer<>(eventMapper);
         Properties producerProperties = new Properties(kafkaClusterProperties.getProducer());
-        producerProperties.put(CLIENT_ID_CONFIG, getClientId(subscriptionId));
+        producerProperties.put(CLIENT_ID_CONFIG, getPublisherId(subscriptionId));
         producerProperties.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         SenderOptions<String, C> senderOptions = SenderOptions.<String, C>create(producerProperties)
                 .withKeySerializer(stringSerializer)
@@ -52,7 +52,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         StandardKafkaEventDeserializer<C> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(contentType, eventMapper);
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
-        String clientId = getClientId(subscriptionId);
+        String clientId = getSubscriberId(subscriptionId);
         String groupId = getGroupId(destination, subscriptionId);
         consumerProperties.put(CLIENT_ID_CONFIG, clientId);
         consumerProperties.put(GROUP_ID_CONFIG, groupId);
@@ -64,8 +64,12 @@ public class StandardKafkaFactory implements KafkaFactory {
         return KafkaReceiver.create(receiverOptions);
     }
 
-    private String getClientId(UUID subscriptionId) {
-        return "subscription-" + subscriptionId.toString();
+    private String getPublisherId(UUID subscriptionId) {
+        return "publisher-" + subscriptionId.toString();
+    }
+
+    private String getSubscriberId(UUID subscriptionId) {
+        return "subscriber" + subscriptionId.toString();
     }
 
     private String getGroupId(EventDestination destination, UUID subscriptionId) {
