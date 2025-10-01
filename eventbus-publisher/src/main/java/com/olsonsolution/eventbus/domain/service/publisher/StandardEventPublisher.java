@@ -21,7 +21,7 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     @Getter
     private boolean closed;
 
-    private final EventDispatcher<C, PublisherSubscription<?>, ?> eventDispatcher;
+    private final EventDispatcher<C, ? extends PublisherSubscription> eventDispatcher;
 
     @Getter
     private final EventDestination destination;

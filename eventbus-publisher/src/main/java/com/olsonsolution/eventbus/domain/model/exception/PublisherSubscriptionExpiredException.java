@@ -9,9 +9,9 @@ public class PublisherSubscriptionExpiredException extends EventDispatchExceptio
 
     private static final String MESSAGE = "Publisher subscription expired for destination=%s";
 
-    private final PublisherSubscription<?> publisherSubscription;
+    private final PublisherSubscription publisherSubscription;
 
-    public PublisherSubscriptionExpiredException(PublisherSubscription<?> publisherSubscription) {
+    public PublisherSubscriptionExpiredException(PublisherSubscription publisherSubscription) {
         super(MESSAGE.formatted(publisherSubscription.getDestination()));
         this.publisherSubscription = publisherSubscription;
     }
