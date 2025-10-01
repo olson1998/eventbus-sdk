@@ -6,8 +6,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface EventListener<C, S extends SubscriberSubscription>
-        extends AutoCloseable {
+public interface EventListener<C, S extends SubscriberSubscription> extends AutoCloseable {
 
     boolean isClosed();
 

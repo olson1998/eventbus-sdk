@@ -22,7 +22,7 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
 
     private final EventProcessor<C> eventProcessor;
 
-    private final EventListener<C, SubscriberSubscription<?>, ?> eventListener;
+    private final EventListener<C, ? extends SubscriberSubscription> eventListener;
 
     @Override
     public Collection<EventDestination> getSubscribedDestinations() {
