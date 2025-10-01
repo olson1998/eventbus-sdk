@@ -4,9 +4,9 @@ import com.olsonsolution.eventbus.domain.port.repository.Subscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
-public interface PublisherSubscription<M extends SubscriptionMetadata> extends Subscription<M> {
+public interface PublisherSubscription extends Subscription {
 
-    M getMetadata();
+    SubscriptionMetadata getMetadata();
 
     EventDestination getDestination();
 

@@ -2,13 +2,12 @@ package com.olsonsolution.eventbus.domain.service.subscription;
 
 import com.olsonsolution.eventbus.domain.port.repository.KafkaEventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.ContinousSubscriberSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
 import lombok.Getter;
 
 import java.time.Duration;
 
 public class ContinuousKafkaSubscriberSubscription extends KafkaSubscriberSubscription
-        implements ContinousSubscriberSubscription<KafkaSubscriptionMetadata> {
+        implements ContinousSubscriberSubscription {
 
     @Getter
     private boolean stopped;

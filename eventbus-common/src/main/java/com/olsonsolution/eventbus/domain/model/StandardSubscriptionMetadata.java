@@ -1,5 +1,6 @@
 package com.olsonsolution.eventbus.domain.model;
 
+import com.asyncapi.v3._0_0.model.AsyncAPI;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,5 +21,7 @@ public class StandardSubscriptionMetadata implements SubscriptionMetadata {
     private ZonedDateTime expireAt;
 
     private ZonedDateTime createdAt;
+
+    private AsyncAPI apiDocs;
 
 }

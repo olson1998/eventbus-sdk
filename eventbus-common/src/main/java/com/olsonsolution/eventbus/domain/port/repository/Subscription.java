@@ -4,7 +4,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.UUID;
 
-public interface Subscription<M extends SubscriptionMetadata> {
+public interface Subscription {
 
     UUID getSubscriptionId();
 

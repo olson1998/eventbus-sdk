@@ -6,8 +6,7 @@ import lombok.Getter;
 
 import java.time.Duration;
 
-public class BatchingKafkaPublisherSubscription extends KafkaPublisherSubscription
-        implements BatchingPublisherSubscription<KafkaSubscriptionMetadata> {
+public class BatchingKafkaPublisherSubscription extends KafkaPublisherSubscription implements BatchingPublisherSubscription {
 
     @Getter
     private final int batchSize;

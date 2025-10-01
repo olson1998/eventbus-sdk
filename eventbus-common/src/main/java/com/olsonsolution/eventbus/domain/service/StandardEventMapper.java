@@ -1,5 +1,6 @@
 package com.olsonsolution.eventbus.domain.service;
 
+import com.asyncapi.v3._0_0.model.AsyncAPI;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -20,25 +21,26 @@ public class StandardEventMapper implements EventMapper {
     private final ObjectMapper mapper;
 
     public static StandardEventMapper create() {
-        MessagePackFactory messagePackFactory = new MessagePackFactory();
-        ObjectMapper objectMapper = new ObjectMapper(messagePackFactory)
-                .configure(WRITE_DATES_AS_TIMESTAMPS, false)
-                .registerModule(new JavaTimeModule());
-        return new StandardEventMapper(objectMapper);
+        MessagePackFactory factory = new MessagePackFactory();
+        ObjectMapper mapper = new ObjectMapper(factory);
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(WRITE_DATES_AS_TIMESTAMPS, false);
+        return new StandardEventMapper(mapper);
     }
 
     @Override
     public byte[] writeValueAsBytes(Object object) throws IOException {
-        return mapper.writeValueAsBytes(object);
+        return new byte[0];
     }
 
     @Override
-    public <T> T readValue(byte[] bytes, Class<T> valueType) throws IOException {
-        return mapper.readValue(bytes, valueType);
+    public <T> T readValue(byte[] bytes, Class<T> valueType, AsyncAPI apiDocs) throws IOException {
+        return null;
     }
 
     @Override
-    public <T> T readValue(byte[] bytes, TypeReference<T> typeReference) throws IOException {
-        return mapper.readValue(bytes, typeReference);
+    public <T> T readValue(byte[] bytes, TypeReference<T> typeReference, AsyncAPI apiDocs) throws IOException {
+        return null;
     }
+
 }

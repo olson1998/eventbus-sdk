@@ -6,12 +6,12 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.Map;
 
-public interface SubscriberSubscription<M extends SubscriptionMetadata> extends Subscription<M> {
+public interface SubscriberSubscription extends Subscription {
 
-    void onMetadataUpdate(M metadata, EventDestination destination);
+    void onMetadataUpdate(SubscriptionMetadata metadata, EventDestination destination);
 
-    M subscribe(EventDestination destination);
+    SubscriptionMetadata subscribe(EventDestination destination);
 
-    Map<EventDestination, M> getSubscribedDestinations();
+    Map<EventDestination, SubscriptionMetadata> getSubscribedDestinations();
 
 }

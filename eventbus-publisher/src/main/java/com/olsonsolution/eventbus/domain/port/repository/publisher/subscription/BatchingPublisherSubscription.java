@@ -4,7 +4,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.time.Duration;
 
-public interface BatchingPublisherSubscription<M extends SubscriptionMetadata> extends PublisherSubscription<M> {
+public interface BatchingPublisherSubscription extends PublisherSubscription {
 
     int getBatchSize();
 

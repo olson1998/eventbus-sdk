@@ -6,13 +6,12 @@ import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcesso
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
-import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.service.subscription.KafkaSubscriberSubscription;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -27,6 +26,8 @@ import reactor.kafka.receiver.ReceiverRecord;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import static java.time.ZoneOffset.UTC;
@@ -34,8 +35,7 @@ import static java.util.Map.entry;
 
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
-        implements EventListener<C, S, KafkaSubscriptionMetadata> {
+abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> implements EventListener<C, S> {
 
     @Getter
     private boolean closed;
@@ -48,26 +48,27 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
 
     private final KafkaFactory kafkaFactory;
 
-    private final Map<KafkaReceiver<String, C>, Collection<KafkaSubscriptionMetadata>> kafkaReceivers =
-            new HashMap<>();
+    private final ConcurrentMap<KafkaReceiver<String, C>, List<SubscriptionMetadata>> kafkaReceiversForSubscriptions =
+            new ConcurrentHashMap<>();
 
     @Override
     public void subscribe(EventDestination destination) {
-        KafkaSubscriptionMetadata metadata = subscription.subscribe(destination);
+        SubscriptionMetadata metadata = subscription.subscribe(destination);
         KafkaReceiver<String, C> kafkaReceiver = findReceiverByMetadata(metadata)
                 .orElseGet(() -> kafkaFactory.fabricateReceiver(
                         subscription.getSubscriptionId(),
                         destination,
+                        metadata.getApiDocs(),
                         contentClass
                 ));
-        kafkaReceivers.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
+        kafkaReceiversForSubscriptions.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
                 .add(metadata);
         onPositionOnTopicPartition(kafkaReceiver, metadata);
     }
 
     @Override
     public void unsubscribe(EventDestination destination) {
-        KafkaSubscriptionMetadata metadata = subscription.getSubscribedDestinations().get(destination);
+        SubscriptionMetadata metadata = subscription.getSubscribedDestinations().get(destination);
         if (metadata == null) {
             return;
         }
@@ -79,7 +80,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
     }
 
     protected Flux<EventMessage<C>> consume() {
-        return Flux.fromIterable(kafkaReceivers.keySet())
+        return Flux.fromIterable(kafkaReceiversForSubscriptions.keySet())
                 .flatMap(this::consumeFromReceiver);
     }
 
@@ -131,7 +132,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
     }
 
     private void onPauseTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
-                                       KafkaSubscriptionMetadata metadata) {
+                                       SubscriptionMetadata metadata) {
         Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
         kafkaReceiver.doOnConsumer(kafkaConsumer -> {
             kafkaConsumer.pause(topicPartitions);
@@ -140,7 +141,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
     }
 
     private void onPositionOnTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
-                                            KafkaSubscriptionMetadata metadata) {
+                                            SubscriptionMetadata metadata) {
         Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
         kafkaReceiver.doOnConsumer(kafkaConsumer -> {
             topicPartitions.forEach(kafkaConsumer::position);
@@ -153,22 +154,12 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
         return kafkaConsumer;
     }
 
-    private Collection<TopicPartition> collectTopicPartitions(KafkaSubscriptionMetadata metadata) {
-        Collection<TopicPartition> topicPartitions;
-        String topic = metadata.getTopic();
-        if (CollectionUtils.isNotEmpty(metadata.getPartition())) {
-            topicPartitions = metadata.getPartition()
-                    .stream()
-                    .map(partition -> new TopicPartition(topic, partition))
-                    .toList();
-        } else {
-            topicPartitions = Collections.singleton(new TopicPartition(topic, 0));
-        }
-        return topicPartitions;
+    private Collection<TopicPartition> collectTopicPartitions(SubscriptionMetadata metadata) {
+        return Collections.emptyList();
     }
 
-    private Optional<KafkaReceiver<String, C>> findReceiverByMetadata(KafkaSubscriptionMetadata metadata) {
-        return kafkaReceivers.entrySet()
+    private Optional<KafkaReceiver<String, C>> findReceiverByMetadata(SubscriptionMetadata metadata) {
+        return kafkaReceiversForSubscriptions.entrySet()
                 .stream()
                 .filter(receiverSubscriptions -> receiverSubscriptions.getValue().contains(metadata))
                 .findFirst()
@@ -177,7 +168,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription>
 
     @Override
     public void close() throws Exception {
-        for (KafkaReceiver<String, C> kafkaReceiver : kafkaReceivers.keySet()) {
+        for (KafkaReceiver<String, C> kafkaReceiver : kafkaReceiversForSubscriptions.keySet()) {
             kafkaReceiver.doOnConsumer(this::closeConsumer)
                     .then()
                     .block();

@@ -17,6 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <msgpack.version>0.9.10</msgpack.version>
         <jackson-datatype-jsr310.version>2.20.0</jackson-datatype-jsr310.version>
+        <asyncapi-core.version>1.0.0-RC4</asyncapi-core.version>
     </properties>
 
     <dependencies>
@@ -34,6 +35,11 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson-datatype-jsr310.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.asyncapi</groupId>
+            <artifactId>asyncapi-core</artifactId>
+            <version>${asyncapi-core.version}</version>
         </dependency>
     </dependencies>
 

@@ -7,6 +7,7 @@ import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatch
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventDispatchException;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.KafkaPublisherSubscription;
 import lombok.AccessLevel;
@@ -29,8 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
-        implements EventDispatcher<C, S, KafkaSubscriptionMetadata> {
+abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> implements EventDispatcher<C, S> {
 
     private KafkaSender<String, C> kafkaSender;
 
@@ -42,8 +42,9 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription>
     @Override
     public void register() {
         if (kafkaSender == null) {
+            SubscriptionMetadata metadata = subscription.getMetadata();
             subscription.register();
-            kafkaSender = kafkaFactory.fabricateSender(subscription.getSubscriptionId());
+            kafkaSender = kafkaFactory.fabricateSender(subscription.getSubscriptionId(), metadata.getApiDocs());
         }
     }
 

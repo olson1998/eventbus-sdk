@@ -5,18 +5,18 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.UUID;
 
-public interface EventbusManager<M extends SubscriptionMetadata> {
+public interface EventbusManager {
 
-    M registerPublisher(UUID subscriptionId, EventDestination destination);
+    SubscriptionMetadata registerPublisher(UUID subscriptionId, EventDestination destination);
 
     UUID registerSubscriber();
 
-    M renewPublisherSubscription(UUID subscriptionId);
+    SubscriptionMetadata renewPublisherSubscription(UUID subscriptionId);
 
     void renewSubscriberSubscription(UUID subscriptionId);
 
-    void unreqisterSubscription(UUID subscriptionId);
+    void unregisterSubscription(UUID subscriptionId);
 
-    M subscribeDestination(UUID subscriptionId, EventDestination destination);
+    SubscriptionMetadata subscribeDestination(UUID subscriptionId, EventDestination destination);
 
 }

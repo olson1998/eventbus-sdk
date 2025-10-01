@@ -1,5 +1,6 @@
 package com.olsonsolution.eventbus.domain.service;
 
+import com.asyncapi.v3._0_0.model.AsyncAPI;
 import com.olsonsolution.eventbus.domain.model.MemberTypes;
 import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
@@ -34,7 +35,7 @@ public class StandardKafkaFactory implements KafkaFactory {
     private final StringDeserializer stringDeserializer = new StringDeserializer();
 
     @Override
-    public <C> KafkaSender<String, C> fabricateSender(UUID subscriptionId) {
+    public <C> KafkaSender<String, C> fabricateSender(UUID subscriptionId, AsyncAPI apiDocs) {
         StandardKafkaEventSerializer<C> kafkaEventSerializer = new StandardKafkaEventSerializer<>(eventMapper);
         Properties producerProperties = new Properties(kafkaClusterProperties.getProducer());
         producerProperties.put(CLIENT_ID_CONFIG, getPublisherId(subscriptionId));
@@ -48,9 +49,10 @@ public class StandardKafkaFactory implements KafkaFactory {
     @Override
     public <C> KafkaReceiver<String, C> fabricateReceiver(UUID subscriptionId,
                                                           EventDestination destination,
+                                                          AsyncAPI apiDocs,
                                                           Class<C> contentType) {
         StandardKafkaEventDeserializer<C> kafkaEventDeserializer =
-                new StandardKafkaEventDeserializer<>(contentType, eventMapper);
+                new StandardKafkaEventDeserializer<>(contentType, apiDocs, eventMapper);
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
         String groupId = getGroupId(destination, subscriptionId);
