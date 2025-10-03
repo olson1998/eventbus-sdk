@@ -10,8 +10,6 @@ public interface EventListener<C, S extends SubscriberSubscription> extends Auto
 
     boolean isClosed();
 
-    Class<C> getContentClass();
-
     S getSubscription();
 
     CompletableFuture<Void> receive(EventProcessor<C> eventProcessor);

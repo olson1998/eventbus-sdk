@@ -1,5 +1,6 @@
 package com.olsonsolution.eventbus.domain.service;
 
+import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.service.subscription.ContinuousKafkaSubscriberSubscription;
@@ -16,10 +17,10 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
 
     private final AtomicBoolean stopped = new AtomicBoolean(true);
 
-    public ContinuousKafkaEventListener(Class<C> contentClass,
-                                        ContinuousKafkaSubscriberSubscription subscription,
+    public ContinuousKafkaEventListener(ContinuousKafkaSubscriberSubscription subscription,
+                                        EventMapper<C> eventMapper,
                                         KafkaFactory kafkaFactory) {
-        super(contentClass, subscription, kafkaFactory);
+        super(subscription, eventMapper, kafkaFactory);
     }
 
     @Override

@@ -44,7 +44,6 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     @Getter
     private final S subscription;
 
-    @Getter
     private final EventMapper<C> eventMapper;
 
     private final KafkaFactory kafkaFactory;
