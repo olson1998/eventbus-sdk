@@ -1,12 +1,17 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
+import com.asyncapi.bindings.kafka.v0._5_0.channel.KafkaChannelBinding;
+import com.asyncapi.v3._0_0.model.channel.Channel;
+import com.asyncapi.v3._0_0.model.channel.message.Message;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olsonsolution.eventbus.domain.model.exception.*;
 import com.olsonsolution.eventbus.domain.model.kafka.KafkaAcknowledgment;
+import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatcher;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
-import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventDispatchException;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.KafkaPublisherSubscription;
@@ -16,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import reactor.core.publisher.Flux;
@@ -26,7 +32,6 @@ import reactor.kafka.sender.SenderResult;
 
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
@@ -34,17 +39,28 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
 
     private KafkaSender<String, C> kafkaSender;
 
+    private Collection<Channel> channels;
+
     @Getter
     private final S subscription;
 
+    private final EventMapper<C> eventMapper;
+
     private final KafkaFactory kafkaFactory;
+
+    private final ObjectMapper objectMapper;
 
     @Override
     public void register() {
         if (kafkaSender == null) {
             SubscriptionMetadata metadata = subscription.getMetadata();
             subscription.register();
-            kafkaSender = kafkaFactory.fabricateSender(subscription.getSubscriptionId(), metadata.getApiDocs());
+            channels = getChannels();
+            kafkaSender = kafkaFactory.fabricateSender(
+                    subscription.getSubscriptionId(),
+                    metadata.getApiDocs(),
+                    eventMapper
+            );
         }
     }
 
@@ -65,22 +81,23 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
     }
 
     protected Mono<List<SenderRecord<String, C, UUID>>> prepareSenderRecords(EventMessage<C> message) {
-        return Mono.fromCallable(() -> listSenderRecords(message));
+        return Flux.fromStream(() -> CollectionUtils.emptyIfNull(channels).stream())
+                .flatMap(channel -> Mono.fromCallable(() -> listSenderRecords(channel, message))
+                        .flatMapMany(Flux::fromIterable))
+                .collectList();
     }
 
-    private List<SenderRecord<String, C, UUID>> listSenderRecords(EventMessage<C> message)
+    private List<SenderRecord<String, C, UUID>> listSenderRecords(Channel channel, EventMessage<C> message)
             throws EventDispatchException {
         verifySubscription();
-        KafkaSubscriptionMetadata sub = subscription.getMetadata();
-        String topic = sub.getTopic();
-        if (CollectionUtils.isNotEmpty(sub.getPartition())) {
-            return sub.getPartition().stream()
-                    .map(partition -> mapToSenderRecord(message, topic, partition))
-                    .sorted(Comparator.comparing(ProducerRecord::partition))
-                    .collect(Collectors.toCollection(ArrayList::new));
-        } else {
-            return Collections.singletonList(mapToSenderRecord(message, topic, null));
-        }
+        List<TopicPartition> topicPartitions = listTopicPartitions();
+        return Optional.ofNullable(channel.getMessages())
+                .flatMap(messages -> Optional.ofNullable(messages.get(eventMapper.getMessageName())))
+                .filter(Message.class::isInstance)
+                .map(Message.class::cast)
+                .stream()
+                .flatMap(msg -> mapToSenderRecords(msg, message, topicPartitions))
+                .toList();
     }
 
     protected List<EventAcknowledgment> processSendResults(Collection<SenderResult<UUID>> senderResults,
@@ -134,9 +151,22 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
                 }, () -> dispatchExceptions.add(new NoMatchingCorrelationException(senderRecord)));
     }
 
+    private Stream<SenderRecord<String, C, UUID>> mapToSenderRecords(Message messageDefinition,
+                                                                     EventMessage<C> message,
+                                                                     Collection<TopicPartition> topicPartitions) {
+        return topicPartitions.stream()
+                .map(topicPartition -> mapToSenderRecord(
+                        message,
+                        topicPartition.topic(),
+                        topicPartition.partition(),
+                        messageDefinition
+                ));
+    }
+
     private SenderRecord<String, C, UUID> mapToSenderRecord(EventMessage<C> message,
                                                             String topic,
-                                                            Integer partition) {
+                                                            Integer partition,
+                                                            Message messageDefinition) {
         Iterable<Header> headers = MapUtils.emptyIfNull(message.getHeaders())
                 .entrySet()
                 .stream()
@@ -158,6 +188,52 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
                 headerEntry.getKey(),
                 String.valueOf(headerEntry.getValue()).getBytes()
         );
+    }
+
+    private Collection<Channel> getChannels() {
+        return Optional.ofNullable(subscription)
+                .flatMap(sub -> Optional.ofNullable(sub.getMetadata()))
+                .flatMap(metadata -> Optional.ofNullable(metadata.getApiDocs()))
+                .map(apiDocs -> MapUtils.emptyIfNull(apiDocs.getChannels()))
+                .map(Map::values)
+                .stream()
+                .flatMap(Collection::stream)
+                .filter(Channel.class::isInstance)
+                .map(Channel.class::cast)
+                .toList();
+    }
+
+    private List<TopicPartition> listTopicPartitions() {
+        return CollectionUtils.emptyIfNull(channels)
+                .stream()
+                .flatMap(this::streamTopicPartitionsForChannel)
+                .toList();
+    }
+
+    private Stream<TopicPartition> streamTopicPartitionsForChannel(Channel channel) {
+        return Optional.ofNullable(channel.getBindings())
+                .flatMap(bound -> Optional.ofNullable(bound.get("kafka")))
+                .filter(KafkaChannelBinding.class::isInstance)
+                .map(KafkaChannelBinding.class::cast)
+                .stream()
+                .flatMap(this::streamTopicPartitionsForKafkaChannel);
+    }
+
+    private Stream<TopicPartition> streamTopicPartitionsForKafkaChannel(KafkaChannelBinding kafkaChannelBinding) {
+        Map<String, Object> extensions = kafkaChannelBinding.getExtensionFields();
+        String topic = kafkaChannelBinding.getTopic();
+        if (extensions != null && extensions.containsKey("x-eventbus-sub-topic-partitions")) {
+            Object extensionValue = extensions.get("x-eventbus-sub-topic-partitions");
+            List<Integer> partitionsList = convertToList(extensionValue);
+            return partitionsList.stream().map(partition -> new TopicPartition(topic, partition));
+        } else {
+            return Stream.of(new TopicPartition(topic, 0));
+        }
+    }
+
+    private List<Integer> convertToList(Object data) {
+        return objectMapper.convertValue(data, new TypeReference<>() {
+        });
     }
 
     @Override

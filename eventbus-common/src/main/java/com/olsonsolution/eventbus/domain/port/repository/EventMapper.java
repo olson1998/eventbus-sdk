@@ -1,19 +1,18 @@
 package com.olsonsolution.eventbus.domain.port.repository;
 
 import com.asyncapi.v3._0_0.model.AsyncAPI;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
-public interface EventMapper {
+public interface EventMapper<T> {
 
-    ObjectMapper getMapper();
+    String getMessageName();
 
-    byte[] writeValueAsBytes(Object object) throws IOException;
+    ObjectMapper getObjectMapper();
 
-    <T> T readValue(byte[] bytes, Class<T> valueType, AsyncAPI apiDocs) throws IOException;
+    byte[] writeValue(String channel, T object, AsyncAPI apiDocs) throws IOException;
 
-    <T> T readValue(byte[] bytes, TypeReference<T> typeReference, AsyncAPI apiDocs) throws IOException;
+    T readValue(String channel, byte[] bytes, AsyncAPI apiDocs) throws IOException;
 
 }

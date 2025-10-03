@@ -1,6 +1,7 @@
 package com.olsonsolution.eventbus.domain.service;
 
 import com.olsonsolution.eventbus.domain.model.ConsumedKafkaEventMessage;
+import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
@@ -41,10 +42,10 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     private boolean closed;
 
     @Getter
-    private final Class<C> contentClass;
+    private final S subscription;
 
     @Getter
-    private final S subscription;
+    private final EventMapper<C> eventMapper;
 
     private final KafkaFactory kafkaFactory;
 
@@ -59,7 +60,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                         subscription.getSubscriptionId(),
                         destination,
                         metadata.getApiDocs(),
-                        contentClass
+                        eventMapper
                 ));
         kafkaReceiversForSubscriptions.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
                 .add(metadata);

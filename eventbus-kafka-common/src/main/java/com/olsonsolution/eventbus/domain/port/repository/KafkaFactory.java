@@ -10,11 +10,12 @@ import java.util.UUID;
 public interface KafkaFactory {
 
     <C> KafkaSender<String, C> fabricateSender(UUID subscriptionId,
-                                               AsyncAPI apiDocs);
+                                               AsyncAPI apiDocs,
+                                               EventMapper<C> eventMapper);
 
     <C> KafkaReceiver<String, C> fabricateReceiver(UUID subscriptionId,
                                                    EventDestination destination,
                                                    AsyncAPI apiDocs,
-                                                   Class<C> contentType);
+                                                   EventMapper<C> contentType);
 
 }

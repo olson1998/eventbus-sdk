@@ -1,7 +1,7 @@
 package com.olsonsolution.eventbus.domain.model.exception;
 
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
-import com.olsonsolution.eventbus.domain.port.stereotype.KafkaSubscriptionMetadata;
+import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventDispatchException;
 import lombok.Getter;
 import reactor.kafka.sender.SenderRecord;
@@ -17,12 +17,12 @@ public class KafkaSendRecordDispatchException extends EventDispatchException {
 
     private final EventDestination destination;
 
-    private final KafkaSubscriptionMetadata kafkaSubscriptionMetadata;
+    private final SubscriptionMetadata kafkaSubscriptionMetadata;
 
     public KafkaSendRecordDispatchException(Throwable cause,
                                             SenderRecord<String, ?, UUID> senderRecord,
                                             EventDestination destination,
-                                            KafkaSubscriptionMetadata kafkaSubscriptionMetadata) {
+                                            SubscriptionMetadata kafkaSubscriptionMetadata) {
         super(MESSAGE.formatted(destination), cause);
         this.senderRecord = senderRecord;
         this.destination = destination;
