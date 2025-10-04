@@ -222,18 +222,16 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
     private Stream<TopicPartition> streamTopicPartitionsForKafkaChannel(KafkaChannelBinding kafkaChannelBinding) {
         Map<String, Object> extensions = kafkaChannelBinding.getExtensionFields();
         String topic = kafkaChannelBinding.getTopic();
-        if (extensions != null && extensions.containsKey("x-eventbus-sub-topic-partitions")) {
-            Object extensionValue = extensions.get("x-eventbus-sub-topic-partitions");
-            List<Integer> partitionsList = convertToList(extensionValue);
-            return partitionsList.stream().map(partition -> new TopicPartition(topic, partition));
+        if (extensions != null && extensions.containsKey("x-assigned-partition")) {
+            Object extensionValue = extensions.get("x-assigned-partition");
+            if (extensionValue instanceof Integer partition) {
+                return Stream.of(new TopicPartition(topic, partition));
+            } else {
+                return Stream.empty();
+            }
         } else {
             return Stream.of(new TopicPartition(topic, 0));
         }
-    }
-
-    private List<Integer> convertToList(Object data) {
-        return objectMapper.convertValue(data, new TypeReference<>() {
-        });
     }
 
     @Override
