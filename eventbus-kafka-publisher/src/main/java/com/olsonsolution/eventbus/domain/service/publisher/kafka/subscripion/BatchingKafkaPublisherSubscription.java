@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion;
 
-import com.olsonsolution.eventbus.domain.port.repository.KafkaEventbusManager;
+import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.BatchingPublisherSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import lombok.Getter;
@@ -17,10 +17,10 @@ public class BatchingKafkaPublisherSubscription extends KafkaPublisherSubscripti
     private final Duration inactivityTimeout;
 
     public BatchingKafkaPublisherSubscription(EventDestination destination,
-                                              KafkaEventbusManager kafkaEventbusManager,
+                                              EventbusManager eventbusManager,
                                               int batchSize,
                                               Duration inactivityTimeout) {
-        super(destination, kafkaEventbusManager);
+        super(destination, eventbusManager);
         this.batchSize = batchSize;
         this.inactivityTimeout = inactivityTimeout;
     }

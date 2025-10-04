@@ -1,9 +1,8 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
 import com.asyncapi.bindings.kafka.v0._5_0.channel.KafkaChannelBinding;
+import com.asyncapi.schemas.asyncapi.AsyncAPISchema;
 import com.asyncapi.v3._0_0.model.channel.Channel;
-import com.asyncapi.v3._0_0.model.channel.message.Message;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olsonsolution.eventbus.domain.model.exception.*;
 import com.olsonsolution.eventbus.domain.model.kafka.KafkaAcknowledgment;
@@ -53,8 +52,8 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
     @Override
     public void register() {
         if (kafkaSender == null) {
-            SubscriptionMetadata metadata = subscription.getMetadata();
             subscription.register();
+            SubscriptionMetadata metadata = subscription.getMetadata();
             channels = getChannels();
             kafkaSender = kafkaFactory.fabricateSender(
                     subscription.getSubscriptionId(),
@@ -93,10 +92,10 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
         List<TopicPartition> topicPartitions = listTopicPartitions();
         return Optional.ofNullable(channel.getMessages())
                 .flatMap(messages -> Optional.ofNullable(messages.get(eventMapper.getMessageName())))
-                .filter(Message.class::isInstance)
-                .map(Message.class::cast)
+                .filter(AsyncAPISchema.class::isInstance)
+                .map(AsyncAPISchema.class::cast)
                 .stream()
-                .flatMap(msg -> mapToSenderRecords(msg, message, topicPartitions))
+                .flatMap(schema -> mapToSenderRecords(schema, message, topicPartitions))
                 .toList();
     }
 
@@ -110,11 +109,13 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
         List<EventAcknowledgment> collectedAcknowledgments = acknowledgments.build().toList();
         List<EventDispatchException> collectedDispatchExceptions = dispatchExceptions.build().toList();
         if (CollectionUtils.isNotEmpty(collectedDispatchExceptions)) {
-            throw new KafkaPartialSendRecordDispatchException(
+            KafkaPartialSendRecordDispatchException e = new KafkaPartialSendRecordDispatchException(
                     subscription.getDestination(),
                     collectedAcknowledgments,
                     collectedDispatchExceptions
             );
+            collectedDispatchExceptions.forEach(e::addSuppressed);
+            throw e;
         }
         return collectedAcknowledgments;
     }
@@ -141,17 +142,18 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
                 .ifPresentOrElse(senderResult -> {
                     if (senderResult.recordMetadata() != null) {
                         acknowledgments.add(new KafkaAcknowledgment(senderResult.recordMetadata()));
+                    } else if (senderResult.exception() != null) {
+                        dispatchExceptions.add(new KafkaSendRecordDispatchException(
+                                senderResult.exception(),
+                                senderRecord,
+                                subscription.getDestination(),
+                                subscription.getMetadata()
+                        ));
                     }
-                    dispatchExceptions.add(new KafkaSendRecordDispatchException(
-                            senderResult.exception(),
-                            senderRecord,
-                            subscription.getDestination(),
-                            subscription.getMetadata()
-                    ));
                 }, () -> dispatchExceptions.add(new NoMatchingCorrelationException(senderRecord)));
     }
 
-    private Stream<SenderRecord<String, C, UUID>> mapToSenderRecords(Message messageDefinition,
+    private Stream<SenderRecord<String, C, UUID>> mapToSenderRecords(AsyncAPISchema schema,
                                                                      EventMessage<C> message,
                                                                      Collection<TopicPartition> topicPartitions) {
         return topicPartitions.stream()
@@ -159,14 +161,14 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
                         message,
                         topicPartition.topic(),
                         topicPartition.partition(),
-                        messageDefinition
+                        schema
                 ));
     }
 
     private SenderRecord<String, C, UUID> mapToSenderRecord(EventMessage<C> message,
                                                             String topic,
                                                             Integer partition,
-                                                            Message messageDefinition) {
+                                                            AsyncAPISchema schema) {
         Iterable<Header> headers = MapUtils.emptyIfNull(message.getHeaders())
                 .entrySet()
                 .stream()

@@ -69,7 +69,7 @@ final class AsyncAPIFactory {
         Channel channel = Channel.builder()
                 .title(channelName)
                 .description(description)
-                .messages(Collections.singletonMap("EventMessage", new AsyncAPISchema()))
+                .messages(Collections.singletonMap("TestPayload", new AsyncAPISchema()))
                 .build();
         channel.setBindings(fabricateBindings(destination));
         channels.add(entry(channelName, channel));

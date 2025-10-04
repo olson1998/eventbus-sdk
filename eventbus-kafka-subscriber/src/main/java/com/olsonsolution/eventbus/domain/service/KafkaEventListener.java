@@ -63,7 +63,6 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                 ));
         kafkaReceiversForSubscriptions.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
                 .add(metadata);
-        onPositionOnTopicPartition(kafkaReceiver, metadata);
     }
 
     @Override
@@ -90,6 +89,13 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                 .onErrorResume(Exception.class, e -> Mono.just(500));
     }
 
+    protected Mono<Integer> processErrorAndEmitStatus(Throwable throwable, EventProcessor<C> eventProcessor) {
+        return Mono.fromSupplier(() -> {
+            eventProcessor.onError(throwable);
+            return 500;
+        });
+    }
+
     private int processEvent(EventMessage<C> eventMessage, EventProcessor<C> eventProcessor) {
         eventProcessor.onEvent(eventMessage);
         return 200;
@@ -101,7 +107,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     }
 
     private EventMessage<C> mapToEventMessage(ReceiverRecord<String, C> receiverRecord) {
-        return ConsumedKafkaEventMessage.<C>consumedKafkaEventMessageBuilder()
+        EventMessage<C> eventMessage = ConsumedKafkaEventMessage.<C>consumedKafkaEventMessageBuilder()
                 .key(receiverRecord.key())
                 .content(receiverRecord.value())
                 .topic(receiverRecord.topic())
@@ -110,6 +116,8 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                 .timestamp(ZonedDateTime.ofInstant(Instant.ofEpochMilli(receiverRecord.timestamp()), UTC))
                 .headers(mapToHeaders(receiverRecord.headers()))
                 .build();
+        receiverRecord.receiverOffset().commit().block();
+        return eventMessage;
     }
 
     private Map<String, Object> mapToHeaders(Headers headers) {

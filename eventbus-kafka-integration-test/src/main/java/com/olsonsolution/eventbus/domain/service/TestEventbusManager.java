@@ -28,14 +28,14 @@ public class TestEventbusManager implements EventbusManager {
     private final List<SubscriptionEntry> subscriptionRegistry = new ArrayList<>();
 
     @Override
-    public SubscriptionMetadata registerPublisher(UUID subscriptionId, EventDestination destination) {
+    public SubscriptionMetadata registerPublisher(EventDestination destination) {
         Optional<SubscriptionEntry> createdSubscription = findSubscriptionEntry(destination);
         if (createdSubscription.isPresent()) {
             return createdSubscription.get().metadata();
         }
         ZonedDateTime timestamp = ZonedDateTime.now();
         SubscriptionMetadata metadata = StandardSubscriptionMetadata.builder()
-                .id(subscriptionId)
+                .id(UUID.randomUUID())
                 .createdAt(timestamp)
                 .expireAt(timestamp.plus(subscriptionDuration))
                 .apiDocs(AsyncAPIFactory.fabricateAsyncAPI(bootstrapServers, Collections.singleton(destination)))

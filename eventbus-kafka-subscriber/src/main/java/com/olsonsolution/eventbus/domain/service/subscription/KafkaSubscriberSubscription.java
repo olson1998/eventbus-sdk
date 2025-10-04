@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.subscription;
 
-import com.olsonsolution.eventbus.domain.port.repository.KafkaEventbusManager;
+import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
@@ -17,29 +17,29 @@ public class KafkaSubscriberSubscription implements SubscriberSubscription {
     @Getter
     private UUID subscriptionId;
 
-    private final KafkaEventbusManager kafkaEventbusManager;
+    private final EventbusManager eventbusManager;
 
     @Getter
     private final Map<EventDestination, SubscriptionMetadata> subscribedDestinations = new ConcurrentHashMap<>();
 
     @Override
     public SubscriptionMetadata subscribe(EventDestination destination) {
-        return null;
+        return eventbusManager.subscribeDestination(subscriptionId, destination);
     }
 
     @Override
     public void renew() {
-        kafkaEventbusManager.renewSubscriberSubscription(subscriptionId);
+        eventbusManager.renewSubscriberSubscription(subscriptionId);
     }
 
     @Override
     public void register() {
-        subscriptionId = kafkaEventbusManager.registerSubscriber();
+        subscriptionId = eventbusManager.registerSubscriber();
     }
 
     @Override
     public void unregister() {
-        kafkaEventbusManager.unregisterSubscription(subscriptionId);
+        eventbusManager.unregisterSubscription(subscriptionId);
     }
 
     @Override

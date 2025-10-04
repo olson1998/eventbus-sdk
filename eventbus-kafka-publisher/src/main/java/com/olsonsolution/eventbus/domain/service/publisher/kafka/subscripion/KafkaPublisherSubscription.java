@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion;
 
-import com.olsonsolution.eventbus.domain.port.repository.KafkaEventbusManager;
+import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.PublisherSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
@@ -21,7 +21,7 @@ public class KafkaPublisherSubscription implements PublisherSubscription {
     @Getter
     private final EventDestination destination;
 
-    private final KafkaEventbusManager kafkaEventbusManager;
+    private final EventbusManager eventbusManager;
 
     @Override
     public void renew() {
@@ -30,11 +30,13 @@ public class KafkaPublisherSubscription implements PublisherSubscription {
 
     @Override
     public void register() {
-
+        metadata = eventbusManager.registerPublisher(destination);
+        subscriptionId = metadata.getId();
     }
 
     @Override
     public void unregister() {
-        kafkaEventbusManager.unregisterSubscription(subscriptionId);
+        eventbusManager.unregisterSubscription(subscriptionId);
+        subscriptionId = null;
     }
 }

@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.subscription;
 
-import com.olsonsolution.eventbus.domain.port.repository.KafkaEventbusManager;
+import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.ContinousSubscriberSubscription;
 import lombok.Getter;
 
@@ -14,8 +14,8 @@ public class ContinuousKafkaSubscriberSubscription extends KafkaSubscriberSubscr
     @Getter
     private final Duration receiveInterval;
 
-    public ContinuousKafkaSubscriberSubscription(KafkaEventbusManager kafkaEventbusManager, Duration receiveInterval) {
-        super(kafkaEventbusManager);
+    public ContinuousKafkaSubscriberSubscription(EventbusManager eventbusManager, Duration receiveInterval) {
+        super(eventbusManager);
         this.receiveInterval = receiveInterval;
     }
 

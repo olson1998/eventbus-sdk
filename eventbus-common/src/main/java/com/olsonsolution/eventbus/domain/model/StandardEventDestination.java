@@ -15,7 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 public class StandardEventDestination implements EventDestination {
 
     private static final String EVENT_DESTINATION_PATTERN =
-            "^[a-zA-Z0-9_-]+\\.[a-zA-Z]\\.[a-zA-Z0-9_-]+\\.[a-zA-Z]\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+$";
+            "^(?=.{1,249}$)[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+){5}$";
 
     @NonNull
     private final String product;

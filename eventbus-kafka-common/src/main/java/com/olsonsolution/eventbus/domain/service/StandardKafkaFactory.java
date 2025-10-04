@@ -18,12 +18,14 @@ import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.clients.CommonClientConfigs.*;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG;
 import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
 
@@ -68,7 +70,8 @@ public class StandardKafkaFactory implements KafkaFactory {
         consumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         ReceiverOptions<String, C> receiverOptions = ReceiverOptions.<String, C>create(consumerProperties)
                 .withKeyDeserializer(stringDeserializer)
-                .withValueDeserializer(kafkaEventDeserializer);
+                .withValueDeserializer(kafkaEventDeserializer)
+                .subscription(Collections.singleton(destination.toString()));
         return KafkaReceiver.create(receiverOptions);
     }
 
