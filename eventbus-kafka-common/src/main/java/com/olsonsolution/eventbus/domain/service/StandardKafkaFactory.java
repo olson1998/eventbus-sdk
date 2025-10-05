@@ -10,14 +10,17 @@ import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import com.olsonsolution.eventbus.domain.port.stereotype.MemberType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
+import reactor.kafka.receiver.ReceiverPartition;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -25,10 +28,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.clients.CommonClientConfigs.*;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG;
+import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
+import static org.apache.kafka.clients.CommonClientConfigs.GROUP_ID_CONFIG;
+import static org.apache.kafka.clients.CommonClientConfigs.GROUP_INSTANCE_ID_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
 import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
 
+@Slf4j
 @RequiredArgsConstructor
 public class StandardKafkaFactory implements KafkaFactory {
 
@@ -50,6 +57,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         SenderOptions<String, C> senderOptions = SenderOptions.<String, C>create(producerProperties)
                 .withKeySerializer(stringSerializer)
                 .withValueSerializer(kafkaEventSerializer);
+        log.info("Fabricated Kafka sender for subscriptionId: {}", subscriptionId);
         return KafkaSender.create(senderOptions);
     }
 
@@ -68,10 +76,19 @@ public class StandardKafkaFactory implements KafkaFactory {
         consumerProperties.put(GROUP_ID_CONFIG, groupId);
         consumerProperties.put(GROUP_INSTANCE_ID_CONFIG, clientId);
         consumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProperties.put(ENABLE_AUTO_COMMIT_CONFIG, false);
+        consumerProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
         ReceiverOptions<String, C> receiverOptions = ReceiverOptions.<String, C>create(consumerProperties)
                 .withKeyDeserializer(stringDeserializer)
                 .withValueDeserializer(kafkaEventDeserializer)
-                .subscription(Collections.singleton(destination.toString()));
+                .subscription(Collections.singleton(destination.toString()))
+                .addAssignListener(receiverPartitions -> {
+                    log.info("Assigned partitions: {}", receiverPartitions);
+                    receiverPartitions.forEach(ReceiverPartition::seekToBeginning);
+                })
+                .commitInterval(Duration.ZERO)
+                .pollTimeout(Duration.ofSeconds(5));
+        log.info("Fabricated Kafka receiver for subscriptionId: {}", subscriptionId);
         return KafkaReceiver.create(receiverOptions);
     }
 
@@ -80,7 +97,7 @@ public class StandardKafkaFactory implements KafkaFactory {
     }
 
     private String getSubscriberId(UUID subscriptionId) {
-        return "subscriber" + subscriptionId.toString();
+        return "subscriber-" + subscriptionId.toString();
     }
 
     private String getGroupId(EventDestination destination, UUID subscriptionId) {
@@ -89,7 +106,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         StringBuilder groupId = new StringBuilder("subscriber-")
                 .append(subscriberType.getIdentifier());
         if (subscriberType.isEqualTo(MemberTypes.FIRST_WINS) ||
-                subscriberType.isEqualTo(MemberTypes.NODE_GROUP)) {
+                subscriberType.isEqualTo(MemberTypes.GROUP)) {
             groupId.append(subscriber.getName());
         } else {
             groupId.append(subscriptionId.toString());

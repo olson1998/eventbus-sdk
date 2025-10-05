@@ -15,7 +15,7 @@ public enum MemberTypes implements MemberType {
     ALL("all", 'A'),
     FIRST_WINS("first_wins", 'F'),
     NODE("node", 'N'),
-    NODE_GROUP("node_group", 'G'),
+    GROUP("node_group", 'G'),
     TENANT("tenant", 'T');
 
     private final String identifier;

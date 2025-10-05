@@ -12,15 +12,13 @@ import com.olsonsolution.eventbus.domain.service.subscription.KafkaSubscriberSub
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import reactor.core.Disposable;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverRecord;
 
@@ -34,7 +32,6 @@ import java.util.stream.Collectors;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Map.entry;
 
-@Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> implements EventListener<C, S> {
 
@@ -50,6 +47,8 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
 
     private final ConcurrentMap<KafkaReceiver<String, C>, List<SubscriptionMetadata>> kafkaReceiversForSubscriptions =
             new ConcurrentHashMap<>();
+
+    private final ConcurrentMap<KafkaReceiver<String, C>, Disposable> kafkaReceiverPolls = new ConcurrentHashMap<>();
 
     @Override
     public void subscribe(EventDestination destination) {
@@ -71,43 +70,38 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
         if (metadata == null) {
             return;
         }
-        findReceiverByMetadata(metadata).ifPresentOrElse(kafkaReceiver -> {
-            onPauseTopicPartition(kafkaReceiver, metadata);
-        }, () -> {
-
-        });
     }
 
-    protected Flux<EventMessage<C>> consume() {
-        return Flux.fromIterable(kafkaReceiversForSubscriptions.keySet())
-                .flatMap(this::consumeFromReceiver);
+    protected void consumeAndProcess(EventProcessor<C> eventProcessor) {
+        for (KafkaReceiver<String, C> kafkaReceiver : kafkaReceiversForSubscriptions.keySet()) {
+            kafkaReceiverPolls.computeIfAbsent(
+                    kafkaReceiver,
+                    receiver -> consumeAndProcess(receiver, eventProcessor)
+            );
+        }
     }
 
-    protected Mono<Integer> processEventAndEmitStatus(EventMessage<C> eventMessage, EventProcessor<C> eventProcessor) {
-        return Mono.fromSupplier(() -> processEvent(eventMessage, eventProcessor))
-                .doOnError(this::onErrorLog)
-                .onErrorResume(Exception.class, e -> Mono.just(500));
-    }
-
-    protected Mono<Integer> processErrorAndEmitStatus(Throwable throwable, EventProcessor<C> eventProcessor) {
-        return Mono.fromSupplier(() -> {
-            eventProcessor.onError(throwable);
-            return 500;
-        });
-    }
-
-    private int processEvent(EventMessage<C> eventMessage, EventProcessor<C> eventProcessor) {
-        eventProcessor.onEvent(eventMessage);
-        return 200;
-    }
-
-    private Flux<EventMessage<C>> consumeFromReceiver(KafkaReceiver<String, C> kafkaReceiver) {
+    private Disposable consumeAndProcess(KafkaReceiver<String, C> kafkaReceiver, EventProcessor<C> eventProcessor) {
         return kafkaReceiver.receive()
-                .map(this::mapToEventMessage);
+                .map(receiverRecord -> processEvent(receiverRecord, eventProcessor))
+                .collectList()
+                .doOnNext(eventProcessor::onPostProcess)
+                .doOnTerminate(() -> kafkaReceiverPolls.remove(kafkaReceiver))
+                .subscribe();
+    }
+
+    private int processEvent(ReceiverRecord<String, C> receiverRecord,
+                             EventProcessor<C> eventProcessor) {
+        try {
+            EventMessage<C> eventMessage = mapToEventMessage(receiverRecord);
+            return eventProcessor.onEvent(eventMessage);
+        } catch (Exception e) {
+            return eventProcessor.onError(e);
+        }
     }
 
     private EventMessage<C> mapToEventMessage(ReceiverRecord<String, C> receiverRecord) {
-        EventMessage<C> eventMessage = ConsumedKafkaEventMessage.<C>consumedKafkaEventMessageBuilder()
+        return ConsumedKafkaEventMessage.<C>consumedKafkaEventMessageBuilder()
                 .key(receiverRecord.key())
                 .content(receiverRecord.value())
                 .topic(receiverRecord.topic())
@@ -116,8 +110,6 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                 .timestamp(ZonedDateTime.ofInstant(Instant.ofEpochMilli(receiverRecord.timestamp()), UTC))
                 .headers(mapToHeaders(receiverRecord.headers()))
                 .build();
-        receiverRecord.receiverOffset().commit().block();
-        return eventMessage;
     }
 
     private Map<String, Object> mapToHeaders(Headers headers) {
@@ -132,29 +124,6 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
 
     private Map.Entry<String, Object> mapToHeader(Header header) {
         return entry(header.key(), new String(header.value()));
-    }
-
-    private void onErrorLog(Throwable throwable) {
-        UUID subscriptionId = getSubscription().getSubscriptionId();
-        log.error("Event listener subscription={} caught processing error:", subscriptionId, throwable);
-    }
-
-    private void onPauseTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
-                                       SubscriptionMetadata metadata) {
-        Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
-        kafkaReceiver.doOnConsumer(kafkaConsumer -> {
-            kafkaConsumer.pause(topicPartitions);
-            return kafkaConsumer;
-        }).then().block();
-    }
-
-    private void onPositionOnTopicPartition(KafkaReceiver<String, C> kafkaReceiver,
-                                            SubscriptionMetadata metadata) {
-        Collection<TopicPartition> topicPartitions = collectTopicPartitions(metadata);
-        kafkaReceiver.doOnConsumer(kafkaConsumer -> {
-            topicPartitions.forEach(kafkaConsumer::position);
-            return kafkaConsumer;
-        }).then().block();
     }
 
     private Consumer<String, C> closeConsumer(Consumer<String, C> kafkaConsumer) {

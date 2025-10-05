@@ -15,6 +15,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <slf4j-simple.version>2.0.17</slf4j-simple.version>
     </properties>
 
     <dependencies>
@@ -27,6 +28,16 @@
             <groupId>com.olsonsolution.eventbus</groupId>
             <artifactId>eventbus-kafka-subscriber</artifactId>
             <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j-simple.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j-simple.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.testcontainers/kafka -->
         <dependency>

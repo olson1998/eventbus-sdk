@@ -30,19 +30,14 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
         stopped.set(sub.isStopped());
         return Flux.interval(Duration.ZERO, consumeInterval)
                 .takeWhile(t -> isClosed())
-                .concatMap(t -> consumeOnIntervals(eventProcessor))
+                .concatMap(t -> Mono.fromRunnable(() -> consumeOnIntervals(eventProcessor)))
                 .then()
                 .toFuture();
     }
 
-    private Mono<Void> consumeOnIntervals(EventProcessor<C> eventProcessor) {
-        if (stopped.get()) {
-            return Mono.empty();
-        } else {
-            return consume().flatMap(eventMessage -> processEventAndEmitStatus(
-                    eventMessage,
-                    eventProcessor
-            )).then();
+    private void consumeOnIntervals(EventProcessor<C> eventProcessor) {
+        if (!stopped.get()) {
+            consumeAndProcess(eventProcessor);
         }
     }
 

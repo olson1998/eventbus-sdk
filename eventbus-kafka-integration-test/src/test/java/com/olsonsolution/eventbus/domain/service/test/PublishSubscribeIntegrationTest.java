@@ -9,7 +9,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import com.olsonsolution.eventbus.domain.service.OnDemandKafkaEventListener;
-import com.olsonsolution.eventbus.domain.service.processor.Event1Processor;
+import com.olsonsolution.eventbus.domain.service.processor.TestEventProcessor;
 import com.olsonsolution.eventbus.domain.service.publisher.StandardEventPublisher;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.ImmediateKafkaEventDispatcher;
 import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.ImmediateKafkaPublisherSubscription;
@@ -18,7 +18,9 @@ import com.olsonsolution.eventbus.domain.service.subscription.OnDemandKafkaSubsc
 import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -30,29 +32,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
 
-    private final Event1Processor event1Processor = new Event1Processor();
+    private static final Member INTEGRATION_TEST_MEMBER = StandardMember.builder()
+            .name("integration-test")
+            .type(MemberTypes.GROUP)
+            .build();
+    private static final Member EVENT_1_PROCESSOR_MEMBER = StandardMember.builder()
+            .name("event-1-processor")
+            .type(MemberTypes.GROUP)
+            .build();
+    private static final EventDestination EVENT_PROCESSOR_1_DESTINATION = StandardEventDestination.builder()
+            .product("eventbus")
+            .publisher(INTEGRATION_TEST_MEMBER)
+            .subscriber(EVENT_1_PROCESSOR_MEMBER)
+            .command("test")
+            .entity(TestPayload.class.getSimpleName())
+            .build();
 
-    private final Event1Processor event2Processor = new Event1Processor();
+    private final TestEventProcessor event1Processor = new TestEventProcessor();
 
     @Test
     void shouldSendAndReceiveEvent(TestInfo testInfo) throws ExecutionException, InterruptedException, TimeoutException {
-        Member publisher = StandardMember.builder()
-                .name("integration-test")
-                .type(MemberTypes.NODE)
-                .build();
-        Member subscriber = StandardMember.builder()
-                .name("1")
-                .type(MemberTypes.FIRST_WINS)
-                .build();
-        EventDestination destination = StandardEventDestination.builder()
-                .product("eventbus")
-                .publisher(publisher)
-                .subscriber(subscriber)
-                .command("test")
-                .entity(TestPayload.class.getSimpleName())
-                .build();
         EventDispatcher<TestPayload, ?> eventDispatcher = new ImmediateKafkaEventDispatcher<>(
-                new ImmediateKafkaPublisherSubscription(destination, eventbusManager),
+                new ImmediateKafkaPublisherSubscription(EVENT_PROCESSOR_1_DESTINATION, eventbusManager),
                 TEST_PAYLOAD_EVENT_MAPPER,
                 KAFKA_FACTORY,
                 OBJECT_MAPPER
@@ -63,19 +64,23 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
                 KAFKA_FACTORY
         );
         EventPublisher<TestPayload> testPayloadEventPublisher =
-                new StandardEventPublisher<>(eventDispatcher, destination);
+                new StandardEventPublisher<>(eventDispatcher, EVENT_PROCESSOR_1_DESTINATION);
         EventSubscriber<TestPayload> testPayloadEventSubscriber =
                 new StandardEventSubscriber<>(event1Processor, eventListener);
         testPayloadEventPublisher.register();
         testPayloadEventSubscriber.register();
-        testPayloadEventSubscriber.subscribe(destination);
+        testPayloadEventSubscriber.subscribe(EVENT_PROCESSOR_1_DESTINATION);
         EventMessage<TestPayload> testPayloadEventMessage = StandardEventMessage.<TestPayload>builder()
                 .timestamp(ZonedDateTime.now())
                 .content(TestPayload.fromTestInfo(testInfo))
                 .build();
         CompletableFuture<Void> listeningFuture = testPayloadEventSubscriber.receive();
-        CompletableFuture<?> dispatchingFuture = testPayloadEventPublisher.publish(testPayloadEventMessage);
-        CompletableFuture.allOf(listeningFuture, dispatchingFuture).get(30, SECONDS);
+        Mono.just(testPayloadEventMessage)
+                .delayElement(Duration.ofSeconds(3))
+                .flatMap(event ->
+                        Mono.fromFuture(() -> testPayloadEventPublisher.publish(event)))
+                .block();
+        listeningFuture.get(30, SECONDS);
         Collection<EventMessage<TestPayload>> receivedEvents = event1Processor.getEvents();
         assertThat(receivedEvents).hasSize(1);
         EventMessage<TestPayload> receivedEvent = CollectionUtils.extractSingleton(receivedEvents);

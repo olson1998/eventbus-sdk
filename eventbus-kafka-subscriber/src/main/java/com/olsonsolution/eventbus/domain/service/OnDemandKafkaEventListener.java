@@ -4,10 +4,11 @@ import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.service.subscription.OnDemandKafkaSubscriberSubscription;
-import reactor.core.scheduler.Schedulers;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 public class OnDemandKafkaEventListener<C> extends KafkaEventListener<C, OnDemandKafkaSubscriberSubscription> {
 
     public OnDemandKafkaEventListener(OnDemandKafkaSubscriberSubscription subscription,
@@ -18,12 +19,8 @@ public class OnDemandKafkaEventListener<C> extends KafkaEventListener<C, OnDeman
 
     @Override
     public CompletableFuture<Void> receive(EventProcessor<C> eventProcessor) {
-        return consume()
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(eventMessage -> processEventAndEmitStatus(eventMessage, eventProcessor))
-                .onErrorResume(Throwable.class::isInstance, e -> processErrorAndEmitStatus(e, eventProcessor))
-                .collectList()
-                .then()
-                .toFuture();
+        consumeAndProcess(eventProcessor);
+        return CompletableFuture.completedFuture(null);
     }
+
 }
