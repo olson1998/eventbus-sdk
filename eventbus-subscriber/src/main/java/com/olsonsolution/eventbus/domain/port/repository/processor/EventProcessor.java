@@ -3,7 +3,7 @@ package com.olsonsolution.eventbus.domain.port.repository.processor;
 import com.olsonsolution.eventbus.domain.port.stereotype.CorruptedEventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 
-import java.util.Collection;
+import java.util.Map;
 
 public interface EventProcessor<C> {
 
@@ -11,8 +11,8 @@ public interface EventProcessor<C> {
 
     int onEvent(EventMessage<C> eventMessage);
 
-    void onCorruptedEvent(CorruptedEventMessage<C> corruptedEventMessage);
+    int onCorruptedEvent(CorruptedEventMessage<C> corruptedEventMessage);
 
-    void onPostProcess(Collection<Integer> statusCodes);
+    void onPostProcess(Map<EventMessage<C>, Integer> eventMessageProcessStatuses);
 
 }

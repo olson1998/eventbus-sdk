@@ -32,17 +32,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
 
-    private static final Member INTEGRATION_TEST_MEMBER = StandardMember.builder()
-            .name("integration-test")
-            .type(MemberTypes.GROUP)
-            .build();
     private static final Member EVENT_1_PROCESSOR_MEMBER = StandardMember.builder()
             .name("event-1-processor")
             .type(MemberTypes.GROUP)
             .build();
     private static final EventDestination EVENT_PROCESSOR_1_DESTINATION = StandardEventDestination.builder()
             .product("eventbus")
-            .publisher(INTEGRATION_TEST_MEMBER)
             .subscriber(EVENT_1_PROCESSOR_MEMBER)
             .command("test")
             .entity(TestPayload.class.getSimpleName())

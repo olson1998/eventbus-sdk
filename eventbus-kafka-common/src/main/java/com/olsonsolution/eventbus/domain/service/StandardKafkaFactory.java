@@ -7,11 +7,13 @@ import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import com.olsonsolution.eventbus.domain.port.stereotype.MemberType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.kafka.receiver.KafkaReceiver;
@@ -62,11 +64,11 @@ public class StandardKafkaFactory implements KafkaFactory {
     }
 
     @Override
-    public <C> KafkaReceiver<String, C> fabricateReceiver(UUID subscriptionId,
-                                                          EventDestination destination,
-                                                          AsyncAPI apiDocs,
-                                                          EventMapper<C> eventMapper) {
-        StandardKafkaEventDeserializer<C> kafkaEventDeserializer =
+    public <C> KafkaReceiver<String, EventMessage<C>> fabricateReceiver(UUID subscriptionId,
+                                                                        EventDestination destination,
+                                                                        AsyncAPI apiDocs,
+                                                                        EventMapper<C> eventMapper) {
+        Deserializer<EventMessage<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
@@ -78,16 +80,17 @@ public class StandardKafkaFactory implements KafkaFactory {
         consumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProperties.put(ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-        ReceiverOptions<String, C> receiverOptions = ReceiverOptions.<String, C>create(consumerProperties)
-                .withKeyDeserializer(stringDeserializer)
-                .withValueDeserializer(kafkaEventDeserializer)
-                .subscription(Collections.singleton(destination.toString()))
-                .addAssignListener(receiverPartitions -> {
-                    log.info("Assigned partitions: {}", receiverPartitions);
-                    receiverPartitions.forEach(ReceiverPartition::seekToBeginning);
-                })
-                .commitInterval(Duration.ZERO)
-                .pollTimeout(Duration.ofSeconds(5));
+        ReceiverOptions<String, EventMessage<C>> receiverOptions =
+                ReceiverOptions.<String, EventMessage<C>>create(consumerProperties)
+                        .withKeyDeserializer(stringDeserializer)
+                        .withValueDeserializer(kafkaEventDeserializer)
+                        .subscription(Collections.singleton(destination.toString()))
+                        .addAssignListener(receiverPartitions -> {
+                            log.info("Assigned partitions: {}", receiverPartitions);
+                            receiverPartitions.forEach(ReceiverPartition::seekToBeginning);
+                        })
+                        .commitInterval(Duration.ZERO)
+                        .pollTimeout(Duration.ofSeconds(5));
         log.info("Fabricated Kafka receiver for subscriptionId: {}", subscriptionId);
         return KafkaReceiver.create(receiverOptions);
     }

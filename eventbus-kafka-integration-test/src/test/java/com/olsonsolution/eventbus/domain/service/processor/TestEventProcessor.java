@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Getter
@@ -25,7 +25,7 @@ public class TestEventProcessor implements EventProcessor<TestPayload> {
     public int onError(Throwable throwable) {
         log.info("Event was not processed successfully, reason:", throwable);
         errors.add(throwable);
-        return 200;
+        return 500;
     }
 
     @Override
@@ -37,14 +37,15 @@ public class TestEventProcessor implements EventProcessor<TestPayload> {
     }
 
     @Override
-    public void onCorruptedEvent(CorruptedEventMessage<TestPayload> corruptedEventMessage) {
+    public int onCorruptedEvent(CorruptedEventMessage<TestPayload> corruptedEventMessage) {
         log.info("Event: {} is corrupted, reason:", corruptedEventMessage, corruptedEventMessage.getCorruptionCause());
         corruptedEvents.add(corruptedEventMessage);
+        return 400;
     }
 
     @Override
-    public void onPostProcess(Collection<Integer> statusCodes) {
-        long errorCounts = statusCodes.stream().filter(statusCode -> statusCode != 200).count();
-        log.info("Events processing success rate: [{}/{}]", events.size() - errorCounts, events.size());
+    public void onPostProcess(Map<EventMessage<TestPayload>, Integer> eventMessageProcessStatuses) {
+
     }
+
 }

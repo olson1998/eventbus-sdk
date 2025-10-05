@@ -1,11 +1,12 @@
 package com.olsonsolution.eventbus.domain.service;
 
 import com.asyncapi.v3._0_0.model.AsyncAPI;
-import com.olsonsolution.eventbus.domain.model.kafka.exception.KafkaDeserializationException;
+import com.olsonsolution.eventbus.domain.model.StandardCorruptedEventMessage;
+import com.olsonsolution.eventbus.domain.model.StandardEventMessage;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaEventDeserializer;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 
 import java.io.IOException;
 
@@ -17,11 +18,17 @@ public class StandardKafkaEventDeserializer<T> implements KafkaEventDeserializer
     private final EventMapper<T> eventMapper;
 
     @Override
-    public T deserialize(String s, byte[] bytes) {
+    public EventMessage<T> deserialize(String s, byte[] bytes) {
         try {
-            return eventMapper.readValue(s, bytes, apiDocs);
+            T content = eventMapper.readValue(s, bytes, apiDocs);
+            return StandardEventMessage.<T>eventMessageBuilder()
+                    .content(content)
+                    .build();
         } catch (IOException e) {
-            throw new KafkaDeserializationException(e);
+            return StandardCorruptedEventMessage.<T>corruptedEventBuilder()
+                    .corruptionCause(e)
+                    .build();
         }
     }
+
 }
