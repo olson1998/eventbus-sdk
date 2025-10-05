@@ -2,6 +2,7 @@ package com.olsonsolution.eventbus.domain.port.repository;
 
 import com.asyncapi.v3._0_0.model.AsyncAPI;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 
 import java.io.IOException;
 

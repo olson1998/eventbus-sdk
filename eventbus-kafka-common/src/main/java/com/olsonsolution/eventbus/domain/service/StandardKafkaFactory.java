@@ -6,10 +6,7 @@ import com.olsonsolution.eventbus.domain.model.MemberTypes;
 import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
-import com.olsonsolution.eventbus.domain.port.stereotype.Member;
-import com.olsonsolution.eventbus.domain.port.stereotype.MemberType;
+import com.olsonsolution.eventbus.domain.port.stereotype.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -65,13 +62,13 @@ public class StandardKafkaFactory implements KafkaFactory {
     }
 
     @Override
-    public <C> KafkaReceiver<String, EventMessage<C>> fabricateReceiver(
+    public <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(
             UUID subscriptionId,
             EventDestination destination,
             AsyncAPI apiDocs,
             EventMapper<C> eventMapper,
             Consumer<Collection<ReceiverPartition>> assignmentListener) {
-        Deserializer<EventMessage<C>> kafkaEventDeserializer =
+        Deserializer<MappingResult<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
@@ -83,8 +80,8 @@ public class StandardKafkaFactory implements KafkaFactory {
         consumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProperties.put(ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-        ReceiverOptions<String, EventMessage<C>> receiverOptions =
-                ReceiverOptions.<String, EventMessage<C>>create(consumerProperties)
+        ReceiverOptions<String, MappingResult<C>> receiverOptions =
+                ReceiverOptions.<String, MappingResult<C>>create(consumerProperties)
                         .withKeyDeserializer(stringDeserializer)
                         .withValueDeserializer(kafkaEventDeserializer)
                         .addAssignListener(assignmentListener)

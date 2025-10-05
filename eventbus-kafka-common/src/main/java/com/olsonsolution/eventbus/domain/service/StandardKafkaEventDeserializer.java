@@ -1,11 +1,11 @@
 package com.olsonsolution.eventbus.domain.service;
 
 import com.asyncapi.v3._0_0.model.AsyncAPI;
-import com.olsonsolution.eventbus.domain.model.StandardCorruptedEventMessage;
-import com.olsonsolution.eventbus.domain.model.StandardEventMessage;
+import com.olsonsolution.eventbus.domain.model.StandardMappingResult;
+import com.olsonsolution.eventbus.domain.model.kafka.exception.KafkaDeserializationException;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaEventDeserializer;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
+import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
@@ -18,16 +18,13 @@ public class StandardKafkaEventDeserializer<T> implements KafkaEventDeserializer
     private final EventMapper<T> eventMapper;
 
     @Override
-    public EventMessage<T> deserialize(String s, byte[] bytes) {
+    public MappingResult<T> deserialize(String s, byte[] bytes) {
         try {
             T content = eventMapper.readValue(s, bytes, apiDocs);
-            return StandardEventMessage.<T>eventMessageBuilder()
-                    .content(content)
-                    .build();
+            return new StandardMappingResult<>(content, null);
         } catch (IOException e) {
-            return StandardCorruptedEventMessage.<T>corruptedEventBuilder()
-                    .corruptionCause(e)
-                    .build();
+            KafkaDeserializationException exception = new KafkaDeserializationException(e);
+            return new StandardMappingResult<>(null, exception);
         }
     }
 

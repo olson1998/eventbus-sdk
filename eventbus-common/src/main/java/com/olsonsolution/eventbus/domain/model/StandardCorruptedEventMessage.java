@@ -1,6 +1,7 @@
 package com.olsonsolution.eventbus.domain.model;
 
 import com.olsonsolution.eventbus.domain.port.stereotype.CorruptedEventMessage;
+import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventMappingException;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -14,12 +15,12 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 public class StandardCorruptedEventMessage<T> extends StandardEventMessage<T> implements CorruptedEventMessage<T> {
 
-    private final Throwable corruptionCause;
+    private final EventMappingException corruptionCause;
 
     @Builder(builderMethodName = "corruptedEventBuilder")
     public StandardCorruptedEventMessage(Map<String, Object> headers,
                                          ZonedDateTime timestamp,
-                                         Throwable corruptionCause) {
+                                         EventMappingException corruptionCause) {
         super(null, headers, timestamp);
         this.corruptionCause = corruptionCause;
     }
