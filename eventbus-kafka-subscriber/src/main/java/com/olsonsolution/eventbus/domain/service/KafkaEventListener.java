@@ -22,14 +22,12 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import reactor.core.Disposable;
 import reactor.kafka.receiver.KafkaReceiver;
+import reactor.kafka.receiver.ReceiverPartition;
 import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -64,7 +62,8 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                         subscription.getSubscriptionId(),
                         destination,
                         metadata.getApiDocs(),
-                        eventMapper
+                        eventMapper,
+                        this::onReceiverPartitionsAssigned
                 ));
         kafkaReceiversSubs.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
                 .add(metadata);
@@ -84,6 +83,8 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
             return consumer;
         }).subscribe();
     }
+
+    protected abstract void onReceiverPartitionsAssigned(Collection<ReceiverPartition> receiverPartitions);
 
     protected void consumeAndProcess(EventProcessor<C> eventProcessor) {
         for (KafkaReceiver<String, EventMessage<C>> kafkaReceiver : kafkaReceiversSubs.keySet()) {

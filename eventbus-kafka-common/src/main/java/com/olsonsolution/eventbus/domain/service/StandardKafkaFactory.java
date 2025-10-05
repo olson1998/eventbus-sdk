@@ -23,9 +23,11 @@ import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.clients.CommonClientConfigs.*;
@@ -63,10 +65,12 @@ public class StandardKafkaFactory implements KafkaFactory {
     }
 
     @Override
-    public <C> KafkaReceiver<String, EventMessage<C>> fabricateReceiver(UUID subscriptionId,
-                                                                        EventDestination destination,
-                                                                        AsyncAPI apiDocs,
-                                                                        EventMapper<C> eventMapper) {
+    public <C> KafkaReceiver<String, EventMessage<C>> fabricateReceiver(
+            UUID subscriptionId,
+            EventDestination destination,
+            AsyncAPI apiDocs,
+            EventMapper<C> eventMapper,
+            Consumer<Collection<ReceiverPartition>> assignmentListener) {
         Deserializer<EventMessage<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
@@ -83,10 +87,7 @@ public class StandardKafkaFactory implements KafkaFactory {
                 ReceiverOptions.<String, EventMessage<C>>create(consumerProperties)
                         .withKeyDeserializer(stringDeserializer)
                         .withValueDeserializer(kafkaEventDeserializer)
-                        .addAssignListener(receiverPartitions -> {
-                            log.info("Assigned partitions: {}", receiverPartitions);
-                            receiverPartitions.forEach(ReceiverPartition::seekToBeginning);
-                        })
+                        .addAssignListener(assignmentListener)
                         .assignment(KafkaAsyncAPIUtils.collectTopicPartitions(apiDocs))
                         .commitInterval(Duration.ZERO)
                         .pollTimeout(Duration.ofSeconds(5));
