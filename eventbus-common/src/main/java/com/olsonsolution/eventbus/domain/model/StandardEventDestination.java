@@ -67,7 +67,7 @@ public class StandardEventDestination implements EventDestination {
 
     @Override
     public String toString() {
-        return "sub-channel" + String.join(".",
+        return "sub-channel." + String.join(".",
                 String.valueOf(subscriber.getType().getIdentifier()),
                 subscriber.getName(),
                 entity,

@@ -60,8 +60,7 @@ final class AsyncAPIFactory {
     private static void fabricateChannel(EventDestination destination,
                                          Stream.Builder<Map.Entry<String, Object>> channels) {
         String channelName = destination.toString();
-        String description = "Subscription publisher: %s subscriber: %s operation %s.%s".formatted(
-                destination.getPublisher(),
+        String description = "Subscription: subscriber: %s operation %s.%s".formatted(
                 destination.getSubscriber(),
                 destination.getCommand(),
                 destination.getEntity()

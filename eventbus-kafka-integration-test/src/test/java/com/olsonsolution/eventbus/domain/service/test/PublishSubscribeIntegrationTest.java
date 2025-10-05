@@ -16,6 +16,7 @@ import com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion.Imm
 import com.olsonsolution.eventbus.domain.service.subscriber.StandardEventSubscriber;
 import com.olsonsolution.eventbus.domain.service.subscription.OnDemandKafkaSubscriberSubscription;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import reactor.core.publisher.Mono;
@@ -23,6 +24,7 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -65,7 +67,11 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
         testPayloadEventPublisher.register();
         testPayloadEventSubscriber.register();
         testPayloadEventSubscriber.subscribe(EVENT_PROCESSOR_1_DESTINATION);
-        EventMessage<TestPayload> testPayloadEventMessage = StandardEventMessage.<TestPayload>builder()
+        EventMessage<TestPayload> testPayloadEventMessage = StandardEventMessage.<TestPayload>eventMessageBuilder()
+                .headers(Map.ofEntries(
+                        new DefaultMapEntry<>("accept", 1),
+                        new DefaultMapEntry<>("testInfo", testInfo.getDisplayName())
+                ))
                 .timestamp(ZonedDateTime.now())
                 .content(TestPayload.fromTestInfo(testInfo))
                 .build();

@@ -18,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import reactor.core.Disposable;
@@ -28,7 +26,10 @@ import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -52,7 +53,8 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     private final ConcurrentMap<KafkaReceiver<String, EventMessage<C>>, List<SubscriptionMetadata>> kafkaReceiversSubs =
             new ConcurrentHashMap<>();
 
-    private final ConcurrentMap<KafkaReceiver<String, EventMessage<C>>, Disposable> kafkaReceiverPolls = new ConcurrentHashMap<>();
+    private final ConcurrentMap<KafkaReceiver<String, EventMessage<C>>, Disposable> kafkaReceiverPolls =
+            new ConcurrentHashMap<>();
 
     @Override
     public void subscribe(EventDestination destination) {
@@ -74,6 +76,13 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
         if (metadata == null) {
             return;
         }
+        KafkaReceiver<String, EventMessage<C>> kafkaReceiver = findReceiverByMetadata(metadata)
+                .orElseThrow();
+        kafkaReceiver.doOnConsumer(consumer -> {
+            subscription.getSubscribedDestinations().remove(destination);
+            consumer.assign(KafkaAsyncAPIUtils.collectTopicPartitions(metadata.getApiDocs()));
+            return consumer;
+        }).subscribe();
     }
 
     protected void consumeAndProcess(EventProcessor<C> eventProcessor) {
@@ -131,6 +140,7 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
                     .build();
         }
         return ConsumedKafkaEventMessage.<C>kafkaEventMessageBuilder()
+                .content(eventMessage.getContent())
                 .key(receiverRecord.key())
                 .headers(headers)
                 .topic(receiverRecord.topic())
@@ -154,19 +164,11 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
         return entry(header.key(), new String(header.value()));
     }
 
-    private Consumer<String, EventMessage<C>> closeConsumer(Consumer<String, EventMessage<C>> kafkaConsumer) {
-        kafkaConsumer.close();
-        return kafkaConsumer;
-    }
-
-    private Collection<TopicPartition> collectTopicPartitions(SubscriptionMetadata metadata) {
-        return Collections.emptyList();
-    }
-
     private Optional<KafkaReceiver<String, EventMessage<C>>> findReceiverByMetadata(SubscriptionMetadata metadata) {
         return kafkaReceiversSubs.entrySet()
                 .stream()
-                .filter(receiverSubscriptions -> receiverSubscriptions.getValue().contains(metadata))
+                .filter(receiverSubscriptions -> receiverSubscriptions.getValue()
+                        .contains(metadata))
                 .findFirst()
                 .map(Map.Entry::getKey);
     }
@@ -174,9 +176,10 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     @Override
     public void close() throws Exception {
         for (KafkaReceiver<String, EventMessage<C>> kafkaReceiver : kafkaReceiversSubs.keySet()) {
-            kafkaReceiver.doOnConsumer(this::closeConsumer)
-                    .then()
-                    .block();
+            kafkaReceiver.doOnConsumer(consumer -> {
+                consumer.close();
+                return consumer;
+            }).subscribe();
         }
         closed = true;
     }

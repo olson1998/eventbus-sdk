@@ -23,7 +23,6 @@ import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -84,11 +83,11 @@ public class StandardKafkaFactory implements KafkaFactory {
                 ReceiverOptions.<String, EventMessage<C>>create(consumerProperties)
                         .withKeyDeserializer(stringDeserializer)
                         .withValueDeserializer(kafkaEventDeserializer)
-                        .subscription(Collections.singleton(destination.toString()))
                         .addAssignListener(receiverPartitions -> {
                             log.info("Assigned partitions: {}", receiverPartitions);
                             receiverPartitions.forEach(ReceiverPartition::seekToBeginning);
                         })
+                        .assignment(KafkaAsyncAPIUtils.collectTopicPartitions(apiDocs))
                         .commitInterval(Duration.ZERO)
                         .pollTimeout(Duration.ofSeconds(5));
         log.info("Fabricated Kafka receiver for subscriptionId: {}", subscriptionId);
