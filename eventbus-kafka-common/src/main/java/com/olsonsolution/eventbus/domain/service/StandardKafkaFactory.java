@@ -13,19 +13,20 @@ import com.olsonsolution.eventbus.domain.port.stereotype.MemberType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.ReceiverPartition;
+import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.clients.CommonClientConfigs.*;
@@ -47,21 +48,22 @@ public class StandardKafkaFactory implements KafkaFactory {
     private final StringDeserializer stringDeserializer = new StringDeserializer();
 
     @Override
-    public <C> SenderOptions<String, C> fabricateSender(UUID subscriptionId,
-                                                        AsyncAPI apiDocs,
-                                                        EventMapper<C> eventMapper) {
+    public <C> KafkaSender<String, C> fabricateSender(UUID subscriptionId,
+                                                      AsyncAPI apiDocs,
+                                                      EventMapper<C> eventMapper) {
         StandardKafkaEventSerializer<C> kafkaEventSerializer = new StandardKafkaEventSerializer<>(apiDocs, eventMapper);
         Properties producerProperties = new Properties(kafkaClusterProperties.getProducer());
         producerProperties.put(BOOTSTRAP_SERVERS_CONFIG, getBootstrapServers(apiDocs.getServers()));
         producerProperties.put(CLIENT_ID_CONFIG, getPublisherId(subscriptionId));
         producerProperties.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return SenderOptions.<String, C>create(producerProperties)
+        SenderOptions<String, C> senderOptions = SenderOptions.<String, C>create(producerProperties)
                 .withKeySerializer(stringSerializer)
                 .withValueSerializer(kafkaEventSerializer);
+        return KafkaSender.create(senderOptions);
     }
 
     @Override
-    public <C> ReceiverOptions<String, MappingResult<C>> fabricateReceiver(
+    public <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(
             Duration maxPollDuration,
             UUID subscriptionId,
             EventDestination destination,
@@ -69,6 +71,29 @@ public class StandardKafkaFactory implements KafkaFactory {
             EventMapper<C> eventMapper) {
         Deserializer<MappingResult<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
+        Properties consumerProperties = getConsumerProperties(subscriptionId, destination, apiDocs);
+        ReceiverOptions<String, MappingResult<C>> receiverOptions =
+                ReceiverOptions.<String, MappingResult<C>>create(consumerProperties)
+                        .withKeyDeserializer(stringDeserializer)
+                        .withValueDeserializer(kafkaEventDeserializer)
+                        .assignment(KafkaAsyncAPIUtils.collectTopicPartitions(apiDocs))
+                        .commitInterval(Duration.ZERO)
+                        .pollTimeout(maxPollDuration);
+        return KafkaReceiver.create(receiverOptions);
+    }
+
+    @Override
+    public <C> Consumer<String, MappingResult<C>> fabricateConsumer(UUID subscriptionId,
+                                                                    EventDestination destination,
+                                                                    AsyncAPI apiDocs,
+                                                                    EventMapper<C> eventMapper) {
+        Deserializer<MappingResult<C>> kafkaEventDeserializer =
+                new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
+        Properties consumerProperties = getConsumerProperties(subscriptionId, destination, apiDocs);
+        return new KafkaConsumer<>(consumerProperties, stringDeserializer, kafkaEventDeserializer);
+    }
+
+    private Properties getConsumerProperties(UUID subscriptionId, EventDestination destination, AsyncAPI apiDocs) {
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
         String groupId = getGroupId(destination, subscriptionId);
@@ -79,12 +104,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         consumerProperties.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProperties.put(ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProperties.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-        return ReceiverOptions.<String, MappingResult<C>>create(consumerProperties)
-                .withKeyDeserializer(stringDeserializer)
-                .withValueDeserializer(kafkaEventDeserializer)
-                .assignment(KafkaAsyncAPIUtils.collectTopicPartitions(apiDocs))
-                .commitInterval(Duration.ZERO)
-                .pollTimeout(maxPollDuration);
+        return consumerProperties;
     }
 
     private String getPublisherId(UUID subscriptionId) {

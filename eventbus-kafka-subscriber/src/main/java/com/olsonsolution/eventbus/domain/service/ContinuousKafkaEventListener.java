@@ -10,16 +10,11 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.kafka.KafkaEventMessage;
 import com.olsonsolution.eventbus.domain.service.subscription.ContinuousKafkaSubscriberSubscription;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.kafka.common.TopicPartition;
 import reactor.core.Disposable;
 import reactor.kafka.receiver.KafkaReceiver;
-import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.ReceiverPartition;
 import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,9 +24,6 @@ import java.util.concurrent.ConcurrentMap;
 public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, ContinuousKafkaSubscriberSubscription> {
 
     private final ConcurrentMap<UUID, Disposable> consumerSubscriptions = new ConcurrentHashMap<>();
-
-    private final ConcurrentMap<UUID, ReceiverOptions<String, MappingResult<C>>> subscriptionReceiverOptions =
-            new ConcurrentHashMap<>();
 
     private final ConcurrentMap<UUID, KafkaReceiver<String, MappingResult<C>>> subscriptionReceivers =
             new ConcurrentHashMap<>();
@@ -48,24 +40,17 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
         assertIsNotClosed();
         SubscriptionMetadata metadata = getSubscription().subscribe(destination);
         UUID subscriptionId = metadata.getId();
-        if (!subscriptionReceiverOptions.containsKey(subscriptionId)) {
-            ReceiverOptions<String, MappingResult<C>> receiverOptions = kafkaFactory.fabricateReceiver(
-                    maxPollInterval,
-                    subscriptionId,
-                    destination,
-                    metadata.getApiDocs(),
-                    eventMapper
-            );
-            receiverOptions.addAssignListener(receiverPartitions -> {
-                UUID subscriberId = getSubscription().getSubscriptionId();
-                Collection<TopicPartition> topicPartitions =
-                        CollectionUtils.collect(receiverPartitions, ReceiverPartition::topicPartition);
-                log.info("Subscriber: {} Assigned to partitions: {}", subscriberId, topicPartitions);
-            });
-            KafkaReceiver<String, MappingResult<C>> kafkaReceiver = KafkaReceiver.create(receiverOptions);
-            subscriptionReceiverOptions.put(subscriptionId, receiverOptions);
-            subscriptionReceivers.put(subscriptionId, kafkaReceiver);
-        }
+        subscriptionReceivers.computeIfAbsent(
+                subscriptionId,
+                sid -> kafkaFactory.fabricateReceiver(
+                        maxPollInterval,
+                        sid,
+                        destination,
+                        metadata.getApiDocs(),
+                        eventMapper
+                )
+        );
+        getSubscription().getSubscribedDestinations().put(destination, metadata);
     }
 
     @Override
@@ -104,14 +89,7 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
     @Override
     public void stopListening() {
         assertIsNotClosed();
-        for (Map.Entry<UUID, ReceiverOptions<String, MappingResult<C>>> subscriptionReceiverOps :
-                subscriptionReceiverOptions.entrySet()) {
-            UUID subscriptionId = subscriptionReceiverOps.getKey();
-            log.info("Subscriber: {} Stopping listening to subscription: {}",
-                    getSubscription().getSubscriptionId(), subscriptionId);
-            ReceiverOptions<String, MappingResult<C>> receiverOptions = subscriptionReceiverOps.getValue();
-            receiverOptions.assignment(CollectionUtils.emptyCollection());
-        }
+        disposeSubscriptions();
         listening = false;
     }
 
@@ -132,6 +110,7 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
                 kafkaConsumerSubscription.dispose();
             }
         }
+        consumerSubscriptions.clear();
     }
 
     private void processKafkaEvent(KafkaEventMessage<C> kafkaEventMessage, EventProcessor<C> eventProcessor) {
@@ -151,7 +130,6 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
     @Override
     public void close() {
         stopListening();
-        disposeSubscriptions();
         closed = true;
     }
 }

@@ -4,10 +4,6 @@ import java.time.Duration;
 
 public interface ContinousSubscriberSubscription extends SubscriberSubscription {
 
-    boolean isStopped();
-
     Duration getReceiveInterval();
-
-    void stop();
 
 }

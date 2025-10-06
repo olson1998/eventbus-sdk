@@ -10,17 +10,11 @@ public class ContinuousKafkaSubscriberSubscription extends KafkaSubscriberSubscr
         implements ContinousSubscriberSubscription {
 
     @Getter
-    private boolean stopped;
-    @Getter
     private final Duration receiveInterval;
 
-    public ContinuousKafkaSubscriberSubscription(EventbusManager eventbusManager, Duration receiveInterval) {
+    public ContinuousKafkaSubscriberSubscription(EventbusManager eventbusManager,
+                                                 Duration receiveInterval) {
         super(eventbusManager);
         this.receiveInterval = receiveInterval;
-    }
-
-    @Override
-    public void stop() {
-        stopped = true;
     }
 }
