@@ -3,6 +3,7 @@ package com.olsonsolution.eventbus.domain.port.repository;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
+import java.util.Collection;
 import java.util.UUID;
 
 public interface EventbusManager {
@@ -19,6 +20,6 @@ public interface EventbusManager {
 
     void unregisterSubscription(UUID subscriptionId);
 
-    SubscriptionMetadata subscribeChannel(UUID subscriptionId, EventChannel destination);
+    Collection<SubscriptionMetadata> subscribeChannels(UUID subscriptionId, Collection<EventChannel> channels);
 
 }

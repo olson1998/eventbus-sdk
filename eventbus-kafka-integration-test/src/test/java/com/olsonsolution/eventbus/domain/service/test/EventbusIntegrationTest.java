@@ -1,7 +1,6 @@
 package com.olsonsolution.eventbus.domain.service.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.olsonsolution.eventbus.domain.model.TestPayload;
 import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 
-import java.time.Duration;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -62,11 +60,7 @@ abstract class EventbusIntegrationTest {
         KAFKA_CONTAINER.start();
         kafkaAdmin = createKafkaAdmin();
         kafkaTopicManager = new KafkaTopicManager(kafkaAdmin);
-        eventbusManager = new TestEventbusManager(
-                Duration.ofMinutes(1),
-                KAFKA_CONTAINER.getBootstrapServers(),
-                kafkaTopicManager
-        );
+        eventbusManager = new TestEventbusManager(KAFKA_CONTAINER.getBootstrapServers(), kafkaTopicManager);
     }
 
     @AfterAll

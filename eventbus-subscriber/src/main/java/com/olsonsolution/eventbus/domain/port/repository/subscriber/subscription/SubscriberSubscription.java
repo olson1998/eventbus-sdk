@@ -5,8 +5,8 @@ import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SubscriberSubscription extends Subscription {
@@ -17,10 +17,16 @@ public interface SubscriberSubscription extends Subscription {
 
     SubscriptionMetadata subscribe(EventChannel destination);
 
+    SubscriptionMetadata unsubscribe(EventChannel destination);
+
     Map<UUID, Collection<EventChannel>> getSubscriptionChannels();
 
-    List<SubscriptionMetadata> getSubscriptionsMetadata();
+    Map<UUID, SubscriptionMetadata> getSubscriptionsMetadata();
 
     Collection<EventChannel> collectSubscribedDestinations();
+
+    Optional<UUID> findIdByChannel(EventChannel channel);
+
+    Optional<SubscriptionMetadata> findMetadataByChannel(UUID channelId);
 
 }

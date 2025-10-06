@@ -10,8 +10,6 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.kafka.KafkaEventMessage;
 import com.olsonsolution.eventbus.domain.service.subscription.ContinuousKafkaSubscriberSubscription;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import reactor.core.Disposable;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverRecord;
@@ -21,6 +19,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import static com.olsonsolution.eventbus.domain.model.MemberTypes.ALL;
 
 @Slf4j
 public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, ContinuousKafkaSubscriberSubscription> {
@@ -39,55 +39,70 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
 
     @Override
     public boolean isListening() {
-
+        return getSubscription().getSubscriptionChannels()
+                .keySet()
+                .stream()
+                .anyMatch(this::isListeningToChannel);
     }
 
     @Override
     public void subscribe(EventChannel channel) {
         assertIsNotClosed();
-        SubscriptionMetadata metadata = getSubscription().subscribe(channel);
-        subscribe(channel, metadata);
+        ContinuousKafkaSubscriberSubscription s = getSubscription();
+        UUID channelId = s.findIdByChannel(channel).orElse(null);
+        SubscriptionMetadata metadata;
+        if (channelId != null) {
+            disposeSubscription(channelId);
+            channelSubscriptions.remove(channelId);
+            channelReceivers.remove(channelId);
+        }
+        metadata = s.subscribe(channel);
+        channelId = metadata.getChannelId();
+        UUID subId = s.getSubscriptionId();
+        String groupId = "channel-" + channelId + "-channel-subscriber";
+        if (areAllSubscribersAllType(channelId)) {
+            groupId = "subscription-" + subId + "-channel-subscriber";
+        }
+        KafkaReceiver<String, MappingResult<C>> kafkaReceiver = kafkaFactory.fabricateReceiver(
+                maxPollInterval,
+                subId,
+                groupId,
+                metadata.getApiDocs(),
+                eventMapper
+        );
+        channelReceivers.put(channelId, kafkaReceiver);
     }
 
     @Override
     public void unsubscribe(EventChannel channel) {
         assertIsNotClosed();
-        SubscriptionMetadata metadata = getSubscription().getSubscribedDestinations().get(channel);
-        if (metadata == null) {
+        ContinuousKafkaSubscriberSubscription s = getSubscription();
+        UUID channelId = s.findIdByChannel(channel).orElse(null);
+        UUID subId = s.getSubscriptionId();
+        if (channelId == null) {
+            log.warn("Subscription: '{}' Channel {} is not subscribed", subId, channel);
             return;
         }
-        UUID channelId = metadata.getChannelId();
+        SubscriptionMetadata metadata = s.findIdByChannel(channel).flatMap(s::findMetadataByChannel).orElse(null);
+        if (metadata == null) {
+            log.warn("Subscription: '{}' Channel {} metadata not found", subId, channel);
+            return;
+        }
         disposeSubscription(channelId);
         channelSubscriptions.remove(channelId);
         channelReceivers.remove(channelId);
-        getSubscription().getSubscribedDestinations().remove(channel);
+        metadata = s.unsubscribe(channel);
+        if (metadata != null) {
+            log.info("Subscription: '{}' resubscribing after leaving channel: {}", subId, channel);
+            subscribe(channel);
+        }
     }
 
     @Override
     public void listen(EventProcessor<C> eventProcessor) {
         assertIsNotClosed();
-        for (Map.Entry<EventChannel, SubscriptionMetadata> channelMetadata :
-                getSubscription().getSubscribedDestinations().entrySet()) {
-            SubscriptionMetadata metadata = channelMetadata.getValue();
-            UUID channelId = metadata.getChannelId();
-            boolean isSubscribed = channelSubscriptions.containsKey(channelId);
-            KafkaReceiver<String, MappingResult<C>> kafkaReceiver = channelReceivers.get(channelId);
-            if (!isSubscribed && kafkaReceiver != null) {
-                Disposable channelSubscription = subscribeToReceiver(kafkaReceiver, eventProcessor);
-                channelSubscriptions.put(channelId, channelSubscription);
-            } else if (!isSubscribed) {
-                subscribe(channelMetadata.getKey(), channelMetadata.getValue());
-                kafkaReceiver = kafkaFactory.fabricateReceiver(
-                        maxPollInterval,
-                        metadata.getId(),
-                        channelMetadata.getKey(),
-                        metadata.getApiDocs(),
-                        eventMapper
-                );
-                channelReceivers.put(channelId, kafkaReceiver);
-                Disposable channelSubscription = subscribeToReceiver(kafkaReceiver, eventProcessor);
-                channelSubscriptions.put(channelId, channelSubscription);
-            }
+        for (UUID channelId : getSubscription().getSubscriptionChannels().keySet()) {
+            listen(channelId, eventProcessor);
         }
     }
 
@@ -97,21 +112,19 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
         disposeSubscriptions();
     }
 
-    private void subscribe(EventChannel channel, SubscriptionMetadata metadata) {
-        UUID channelId = metadata.getChannelId();
-        KafkaReceiver<String, MappingResult<C>> kafkaReceiver;
-        if (channelReceivers.containsKey(channelId)) {
-            disposeSubscription(channelId);
+    private void listen(UUID channelId, EventProcessor<C> eventProcessor) {
+        KafkaReceiver<String, MappingResult<C>> kafkaReceiver = channelReceivers.get(channelId);
+        if (kafkaReceiver != null) {
+            channelSubscriptions.computeIfAbsent(
+                    channelId,
+                    cid -> subscribeToReceiver(kafkaReceiver, eventProcessor)
+            );
+        } else {
+            log.warn(
+                    "Subscription: '{}' Channel {} is receiver not created yet",
+                    getSubscription().getSubscriptionId(), channelId
+            );
         }
-        kafkaReceiver = kafkaFactory.fabricateReceiver(
-                maxPollInterval,
-                channelId,
-                channel,
-                metadata.getApiDocs(),
-                eventMapper
-        );
-        channelReceivers.put(channelId, kafkaReceiver);
-        getSubscription().getSubscribedDestinations().put(channel, metadata);
     }
 
     private void processEvent(ReceiverRecord<String, MappingResult<C>> receiverRecord,
@@ -161,9 +174,18 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
                 .subscribe(record -> processEvent(record, eventProcessor));
     }
 
-    private boolean isListeningToChannel(Map.Entry<EventChannel, SubscriptionMetadata> channelMetadata) {
-        UUID channelId = channelMetadata.getValue().getChannelId();
+    private boolean isListeningToChannel(UUID channelId) {
         return !channelSubscriptions.containsKey(channelId) || !channelSubscriptions.get(channelId).isDisposed();
+    }
+
+    private boolean areAllSubscribersAllType(UUID channelId) {
+        if (getSubscription().getSubscriptionChannels().containsKey(channelId)) {
+            return getSubscription().getSubscriptionChannels().get(channelId)
+                    .stream()
+                    .allMatch(channel -> channel.getSubscriber().getType().isEqualTo(ALL));
+        } else {
+            return false;
+        }
     }
 
     @Override

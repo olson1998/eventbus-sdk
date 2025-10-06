@@ -5,10 +5,10 @@ import com.olsonsolution.eventbus.domain.model.kafka.ConsumedKafkaEventMessage;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
+import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventMappingException;
 import com.olsonsolution.eventbus.domain.port.stereotype.kafka.KafkaEventMessage;
-import com.olsonsolution.eventbus.domain.service.subscription.KafkaSubscriberSubscription;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.Map.entry;
 
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> implements EventListener<C, S> {
+abstract class KafkaEventListener<C, S extends SubscriberSubscription> implements EventListener<C, S> {
 
     @Getter
     protected boolean closed;

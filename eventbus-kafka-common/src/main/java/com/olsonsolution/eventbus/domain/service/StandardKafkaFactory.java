@@ -29,6 +29,7 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.apache.kafka.clients.CommonClientConfigs.*;
 import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.GROUP_ID_CONFIG;
@@ -62,40 +63,38 @@ public class StandardKafkaFactory implements KafkaFactory {
     }
 
     @Override
-    public <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(
-            Duration maxPollDuration,
-            UUID subscriptionId,
-            EventChannel destination,
-            AsyncAPI apiDocs,
-            EventMapper<C> eventMapper) {
+    public <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(Duration pollInterval,
+                                                                         UUID subscriptionId,
+                                                                         String groupId,
+                                                                         AsyncAPI apiDocs,
+                                                                         EventMapper<C> eventMapper) {
         Deserializer<MappingResult<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
-        Properties consumerProperties = getConsumerProperties(subscriptionId, destination, apiDocs);
+        Properties consumerProperties = getConsumerProperties(subscriptionId, groupId, apiDocs);
         ReceiverOptions<String, MappingResult<C>> receiverOptions =
                 ReceiverOptions.<String, MappingResult<C>>create(consumerProperties)
                         .withKeyDeserializer(stringDeserializer)
                         .withValueDeserializer(kafkaEventDeserializer)
-                        .assignment(KafkaAsyncAPIUtils.collectTopicPartitions(apiDocs))
+                        .subscription(KafkaAsyncAPIUtils.collectTopics(apiDocs))
                         .commitInterval(Duration.ZERO)
-                        .pollTimeout(maxPollDuration);
+                        .pollTimeout(pollInterval);
         return KafkaReceiver.create(receiverOptions);
     }
 
     @Override
     public <C> Consumer<String, MappingResult<C>> fabricateConsumer(UUID subscriptionId,
-                                                                    EventChannel destination,
+                                                                    String groupId,
                                                                     AsyncAPI apiDocs,
                                                                     EventMapper<C> eventMapper) {
         Deserializer<MappingResult<C>> kafkaEventDeserializer =
                 new StandardKafkaEventDeserializer<>(apiDocs, eventMapper);
-        Properties consumerProperties = getConsumerProperties(subscriptionId, destination, apiDocs);
+        Properties consumerProperties = getConsumerProperties(subscriptionId, groupId, apiDocs);
         return new KafkaConsumer<>(consumerProperties, stringDeserializer, kafkaEventDeserializer);
     }
 
-    private Properties getConsumerProperties(UUID subscriptionId, EventChannel destination, AsyncAPI apiDocs) {
+    private Properties getConsumerProperties(UUID subscriptionId, String groupId, AsyncAPI apiDocs) {
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
-        String groupId = getGroupId(destination, subscriptionId);
         consumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, getBootstrapServers(apiDocs.getServers()));
         consumerProperties.put(CLIENT_ID_CONFIG, clientId);
         consumerProperties.put(GROUP_ID_CONFIG, groupId);

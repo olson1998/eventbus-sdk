@@ -1,7 +1,6 @@
 package com.olsonsolution.eventbus.domain.port.repository;
 
 import com.asyncapi.v3._0_0.model.AsyncAPI;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 import org.apache.kafka.clients.consumer.Consumer;
 import reactor.kafka.receiver.KafkaReceiver;
@@ -19,12 +18,12 @@ public interface KafkaFactory {
     <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(
             Duration pollInterval,
             UUID subscriptionId,
-            EventChannel destination,
+            String groupId,
             AsyncAPI apiDocs,
-            EventMapper<C> contentType);
+            EventMapper<C> eventMapper);
 
     <C> Consumer<String, MappingResult<C>> fabricateConsumer(UUID subscriptionId,
-                                                             EventChannel destination,
+                                                             String groupId,
                                                              AsyncAPI apiDocs,
                                                              EventMapper<C> eventMapper);
 

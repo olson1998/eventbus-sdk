@@ -31,17 +31,17 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     @Override
     public void subscribe(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
-        log.info("Subscriber {} Subscribing to destination: {}", id, destination);
+        log.info("Subscriber {} Subscribing to channel: {}", id, destination);
         eventListener.subscribe(destination);
-        log.info("Subscriber {} Subscribed to destination: {}", id, destination);
+        log.info("Subscriber {} Subscribed to channel: {}", id, destination);
     }
 
     @Override
     public void unsubscribe(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
-        log.info("Subscriber {} unsubscribing to destination: {}", id, destination);
-        eventListener.subscribe(destination);
-        log.info("Subscriber {} unsubscribed to destination: {}", id, destination);
+        log.info("Subscriber {} unsubscribing to channel: {}", id, destination);
+        eventListener.unsubscribe(destination);
+        log.info("Subscriber {} unsubscribed to channel: {}", id, destination);
     }
 
     @Override
@@ -73,7 +73,7 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     @Override
     public void onDestinationDestroyed(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
-        log.info("Unsubscribing subscription {} from destination={} due to destination destruction", id, destination);
+        log.info("Unsubscribing subscription {} from destination={} due to channel destruction", id, destination);
         unsubscribe(destination);
     }
 

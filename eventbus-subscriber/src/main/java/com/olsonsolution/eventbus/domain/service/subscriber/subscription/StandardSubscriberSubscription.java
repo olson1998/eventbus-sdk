@@ -7,6 +7,7 @@ import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,31 +24,44 @@ public class StandardSubscriberSubscription implements SubscriberSubscription {
     private final Map<UUID, Collection<EventChannel>> subscriptionChannels = new ConcurrentHashMap<>();
 
     @Getter
-    private final List<SubscriptionMetadata> subscriptionsMetadata = new ArrayList<>();
+    private final Map<UUID, SubscriptionMetadata> subscriptionsMetadata = new ConcurrentHashMap<>();
 
     @Override
     public SubscriptionMetadata subscribe(EventChannel channel) {
-        Optional<UUID> registeredChannelId = subscriptionChannels.entrySet()
+        Optional<Map.Entry<UUID, Collection<EventChannel>>> registeredChannel = subscriptionChannels.entrySet()
                 .stream()
                 .filter(sub -> isSubscriptionForDestination(sub, channel))
-                .map(Map.Entry::getKey)
                 .findFirst();
         UUID channelId;
-        if (registeredChannelId.isEmpty()) {
+        Collection<EventChannel> channels;
+        if (registeredChannel.isEmpty()) {
             channelId = eventbusManager.getChannelId(channel);
-            subscriptionChannels.put(channelId, new ArrayList<>(Collections.singletonList(channel)));
+            channels = new ArrayList<>(Collections.singletonList(channel));
+            subscriptionChannels.put(channelId, channels);
         } else {
-            channelId = registeredChannelId.get();
+            channelId = registeredChannel.get().getKey();
+            channels = registeredChannel.get().getValue();
         }
-        SubscriptionMetadata subscriptionMetadata = subscriptionsMetadata.stream()
-                .filter(metadata -> Objects.equals(channelId, metadata.getChannelId()))
-                .findFirst()
-                .orElse(null);
-        if (subscriptionMetadata == null) {
-            subscriptionMetadata = eventbusManager.subscribeChannel(subscriptionId, channel);
-            subscriptionsMetadata.add(subscriptionMetadata);
-        }
+        SubscriptionMetadata subscriptionMetadata =
+                CollectionUtils.extractSingleton(eventbusManager.subscribeChannels(subscriptionId, channels));
+        subscriptionsMetadata.put(channelId, subscriptionMetadata);
         return subscriptionMetadata;
+    }
+
+    @Override
+    public SubscriptionMetadata unsubscribe(EventChannel destination) {
+        UUID channelId = findIdByChannel(destination).orElseThrow();
+        Collection<EventChannel> channels = subscriptionChannels.get(channelId);
+        channels.remove(destination);
+        if (CollectionUtils.isNotEmpty(channels)) {
+            SubscriptionMetadata subscriptionMetadata =
+                    CollectionUtils.extractSingleton(eventbusManager.subscribeChannels(subscriptionId, channels));
+            subscriptionsMetadata.replace(channelId, subscriptionMetadata);
+            return subscriptionMetadata;
+        } else {
+            subscriptionChannels.remove(channelId);
+            return null;
+        }
     }
 
     @Override
@@ -56,6 +70,20 @@ public class StandardSubscriberSubscription implements SubscriberSubscription {
                 .stream()
                 .flatMap(Collection::stream)
                 .toList();
+    }
+
+    @Override
+    public Optional<UUID> findIdByChannel(EventChannel channel) {
+        return subscriptionChannels.entrySet()
+                .stream()
+                .filter(sub -> isSubscriptionForDestination(sub, channel))
+                .map(Map.Entry::getKey)
+                .findFirst();
+    }
+
+    @Override
+    public Optional<SubscriptionMetadata> findMetadataByChannel(UUID channelId) {
+        return Optional.ofNullable(subscriptionsMetadata.get(channelId));
     }
 
     @Override
