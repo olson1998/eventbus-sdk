@@ -26,7 +26,6 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
-import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 
@@ -56,12 +55,11 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
             subscription.register();
             SubscriptionMetadata metadata = subscription.getMetadata();
             channels = getChannels();
-            SenderOptions<String, C> senderOptions = kafkaFactory.fabricateSender(
+            kafkaSender = kafkaFactory.fabricateSender(
                     subscription.getSubscriptionId(),
                     metadata.getApiDocs(),
                     eventMapper
             );
-            kafkaSender = KafkaSender.create(senderOptions);
         }
     }
 

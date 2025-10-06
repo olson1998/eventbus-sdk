@@ -1,7 +1,7 @@
 package com.olsonsolution.eventbus.domain.model.exception;
 
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventDispatchException;
 import lombok.Getter;
 
@@ -12,11 +12,11 @@ public class KafkaPartialSendRecordDispatchException extends EventDispatchExcept
 
     private static final String MESSAGE = "Event for destination=%s sent success rate: [%s/%s]";
 
-    private final EventDestination destination;
+    private final EventChannel destination;
 
     private final Collection<EventAcknowledgment> eventAcknowledgments;
 
-    public KafkaPartialSendRecordDispatchException(EventDestination destination,
+    public KafkaPartialSendRecordDispatchException(EventChannel destination,
                                                    Collection<EventAcknowledgment> eventAcknowledgments,
                                                    Collection<EventDispatchException> dispatchExceptions) {
         super(writeMessage(destination, eventAcknowledgments, dispatchExceptions));
@@ -25,7 +25,7 @@ public class KafkaPartialSendRecordDispatchException extends EventDispatchExcept
         dispatchExceptions.forEach(this::addSuppressed);
     }
 
-    private static String writeMessage(EventDestination destination,
+    private static String writeMessage(EventChannel destination,
                                        Collection<EventAcknowledgment> eventAcknowledgments,
                                        Collection<EventDispatchException> dispatchExceptions) {
         int totalMessages = eventAcknowledgments.size() + dispatchExceptions.size();

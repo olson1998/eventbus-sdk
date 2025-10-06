@@ -3,7 +3,7 @@ package com.olsonsolution.eventbus.domain.service;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.service.subscription.OnDemandKafkaSubscriberSubscription;
 
 import java.time.Duration;
@@ -28,12 +28,12 @@ public class OnDemandKafkaEventListener<C> extends KafkaEventListener<C, OnDeman
     }
 
     @Override
-    public void subscribe(EventDestination destination) {
+    public void subscribe(EventChannel destination) {
 
     }
 
     @Override
-    public void unsubscribe(EventDestination destination) {
+    public void unsubscribe(EventChannel destination) {
 
     }
 

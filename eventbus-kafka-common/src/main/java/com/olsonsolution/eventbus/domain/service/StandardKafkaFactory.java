@@ -6,7 +6,7 @@ import com.olsonsolution.eventbus.domain.model.MemberTypes;
 import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import com.olsonsolution.eventbus.domain.port.stereotype.MemberType;
@@ -29,7 +29,6 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.apache.kafka.clients.CommonClientConfigs.*;
 import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.CommonClientConfigs.GROUP_ID_CONFIG;
@@ -66,7 +65,7 @@ public class StandardKafkaFactory implements KafkaFactory {
     public <C> KafkaReceiver<String, MappingResult<C>> fabricateReceiver(
             Duration maxPollDuration,
             UUID subscriptionId,
-            EventDestination destination,
+            EventChannel destination,
             AsyncAPI apiDocs,
             EventMapper<C> eventMapper) {
         Deserializer<MappingResult<C>> kafkaEventDeserializer =
@@ -84,7 +83,7 @@ public class StandardKafkaFactory implements KafkaFactory {
 
     @Override
     public <C> Consumer<String, MappingResult<C>> fabricateConsumer(UUID subscriptionId,
-                                                                    EventDestination destination,
+                                                                    EventChannel destination,
                                                                     AsyncAPI apiDocs,
                                                                     EventMapper<C> eventMapper) {
         Deserializer<MappingResult<C>> kafkaEventDeserializer =
@@ -93,7 +92,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         return new KafkaConsumer<>(consumerProperties, stringDeserializer, kafkaEventDeserializer);
     }
 
-    private Properties getConsumerProperties(UUID subscriptionId, EventDestination destination, AsyncAPI apiDocs) {
+    private Properties getConsumerProperties(UUID subscriptionId, EventChannel destination, AsyncAPI apiDocs) {
         Properties consumerProperties = new Properties(kafkaClusterProperties.getConsumer());
         String clientId = getSubscriberId(subscriptionId);
         String groupId = getGroupId(destination, subscriptionId);
@@ -115,7 +114,7 @@ public class StandardKafkaFactory implements KafkaFactory {
         return "subscriber-" + subscriptionId.toString();
     }
 
-    private String getGroupId(EventDestination destination, UUID subscriptionId) {
+    private String getGroupId(EventChannel destination, UUID subscriptionId) {
         Member subscriber = destination.getSubscriber();
         MemberType subscriberType = subscriber.getType();
         StringBuilder groupId = new StringBuilder("subscriber-")

@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.model;
 
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -10,7 +10,7 @@ import lombok.NonNull;
 @Getter
 @Builder
 @EqualsAndHashCode
-public class StandardEventDestination implements EventDestination {
+public class StandardEventChannel implements EventChannel {
 
     private static final String EVENT_DESTINATION_PATTERN =
             "^(?=.{1,249}$)[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+){5}$";
@@ -27,20 +27,20 @@ public class StandardEventDestination implements EventDestination {
     @NonNull
     private final String command;
 
-    public StandardEventDestination(@NonNull String product,
-                                    @NonNull Member subscriber,
-                                    @NonNull String entity,
-                                    @NonNull String command) {
+    public StandardEventChannel(@NonNull String product,
+                                @NonNull Member subscriber,
+                                @NonNull String entity,
+                                @NonNull String command) {
         this.product = product;
         this.subscriber = subscriber;
         this.entity = entity;
         this.command = command;
     }
 
-//    public static StandardEventDestination fromString(String destinationString) {
+//    public static StandardEventChannel fromString(String destinationString) {
 //        validateDestination(destinationString);
 //        String[] values = StringUtils.split(destinationString, '.');
-//        return StandardEventDestination.builder()
+//        return StandardEventChannel.builder()
 //                .product(values[0])
 //                .publisher(StandardMember.builder()
 //                        .type(MemberTypes.fromIdentifier(extractIdentifier(values[1])))

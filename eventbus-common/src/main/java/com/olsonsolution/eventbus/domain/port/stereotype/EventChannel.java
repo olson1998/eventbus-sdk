@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.port.stereotype;
 
-public interface EventDestination {
+public interface EventChannel {
 
     Member getSubscriber();
 

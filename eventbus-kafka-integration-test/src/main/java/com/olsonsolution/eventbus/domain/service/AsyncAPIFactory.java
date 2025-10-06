@@ -6,7 +6,7 @@ import com.asyncapi.v3._0_0.model.AsyncAPI;
 import com.asyncapi.v3._0_0.model.channel.Channel;
 import com.asyncapi.v3._0_0.model.info.Info;
 import com.asyncapi.v3._0_0.model.server.Server;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -24,7 +24,7 @@ import static org.apache.kafka.common.security.auth.SecurityProtocol.PLAINTEXT;
 final class AsyncAPIFactory {
 
     static AsyncAPI fabricateAsyncAPI(@NonNull String bootstrapServers,
-                                      Collection<EventDestination> destinations) {
+                                      Collection<EventChannel> destinations) {
         return AsyncAPI.builder()
                 .servers(fabricateServers(bootstrapServers))
                 .info(fabricateInfo())
@@ -51,13 +51,13 @@ final class AsyncAPIFactory {
                 .build();
     }
 
-    private static Map<String, Object> fabricateChannels(Collection<EventDestination> destinations) {
+    private static Map<String, Object> fabricateChannels(Collection<EventChannel> destinations) {
         Stream.Builder<Map.Entry<String, Object>> channels = Stream.builder();
         destinations.forEach(destination -> fabricateChannel(destination, channels));
         return channels.build().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    private static void fabricateChannel(EventDestination destination,
+    private static void fabricateChannel(EventChannel destination,
                                          Stream.Builder<Map.Entry<String, Object>> channels) {
         String channelName = destination.toString();
         String description = "Subscription: subscriber: %s operation %s.%s".formatted(
@@ -74,7 +74,7 @@ final class AsyncAPIFactory {
         channels.add(entry(channelName, channel));
     }
 
-    private static Map<String, Object> fabricateBindings(EventDestination destination) {
+    private static Map<String, Object> fabricateBindings(EventChannel destination) {
         String topic = destination.toString();
         KafkaChannelBinding kafkaChannelBinding = KafkaChannelBinding.builder()
                 .topic(topic)

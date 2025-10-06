@@ -2,7 +2,7 @@ package com.olsonsolution.eventbus.domain.port.repository.subscriber;
 
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 
 public interface EventListener<C, S extends SubscriberSubscription> extends AutoCloseable {
 
@@ -16,8 +16,8 @@ public interface EventListener<C, S extends SubscriberSubscription> extends Auto
 
     void stopListening();
 
-    void subscribe(EventDestination destination);
+    void subscribe(EventChannel channel);
 
-    void unsubscribe(EventDestination destination);
+    void unsubscribe(EventChannel channel);
 
 }

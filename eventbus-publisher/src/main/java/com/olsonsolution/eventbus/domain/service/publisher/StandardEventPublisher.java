@@ -4,7 +4,7 @@ import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatch
 import com.olsonsolution.eventbus.domain.port.repository.publisher.EventPublisher;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.PublisherSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     private final EventDispatcher<C, ? extends PublisherSubscription> eventDispatcher;
 
     @Getter
-    private final EventDestination destination;
+    private final EventChannel destination;
 
     @Override
     public CompletableFuture<List<EventAcknowledgment>> publish(EventMessage<C> message) {
@@ -51,7 +51,7 @@ public class StandardEventPublisher<C> implements EventPublisher<C> {
     }
 
     @Override
-    public void onDestinationDestroyed(EventDestination destination) {
+    public void onDestinationDestroyed(EventChannel destination) {
         log.info("Destination {} destroyed, closing publisher", destination);
         try {
             close();

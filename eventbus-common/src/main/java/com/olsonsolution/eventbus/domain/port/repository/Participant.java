@@ -1,6 +1,6 @@
 package com.olsonsolution.eventbus.domain.port.repository;
 
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 
 public interface Participant extends AutoCloseable {
 
@@ -10,6 +10,6 @@ public interface Participant extends AutoCloseable {
 
     void unregister();
 
-    void onDestinationDestroyed(EventDestination destination);
+    void onDestinationDestroyed(EventChannel destination);
 
 }

@@ -1,18 +1,26 @@
 package com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription;
 
 import com.olsonsolution.eventbus.domain.port.repository.Subscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 
 public interface SubscriberSubscription extends Subscription {
 
-    void onMetadataUpdate(SubscriptionMetadata metadata, EventDestination destination);
+    UUID getSubscriptionId();
 
-    SubscriptionMetadata subscribe(EventDestination destination);
+    void onMetadataUpdate(SubscriptionMetadata metadata, EventChannel destination);
 
-    Map<EventDestination, SubscriptionMetadata> getSubscribedDestinations();
+    SubscriptionMetadata subscribe(EventChannel destination);
+
+    Map<UUID, Collection<EventChannel>> getSubscriptionChannels();
+
+    List<SubscriptionMetadata> getSubscriptionsMetadata();
+
+    Collection<EventChannel> collectSubscribedDestinations();
 
 }

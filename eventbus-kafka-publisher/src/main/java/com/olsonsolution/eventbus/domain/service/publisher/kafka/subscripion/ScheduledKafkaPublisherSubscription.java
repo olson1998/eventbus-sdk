@@ -2,7 +2,7 @@ package com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion;
 
 import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.ScheduledPublisherSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import lombok.Getter;
 
 import java.time.Duration;
@@ -13,7 +13,7 @@ public class ScheduledKafkaPublisherSubscription extends KafkaPublisherSubscript
     @Getter
     private final Duration dispatchDuration;
 
-    public ScheduledKafkaPublisherSubscription(EventDestination destination,
+    public ScheduledKafkaPublisherSubscription(EventChannel destination,
                                                EventbusManager eventbusManager,
                                                Duration dispatchDuration) {
         super(destination, eventbusManager);

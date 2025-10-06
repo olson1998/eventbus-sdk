@@ -4,7 +4,7 @@ import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcesso
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventSubscriber;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,14 +24,14 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     private final EventListener<C, ? extends SubscriberSubscription> eventListener;
 
     @Override
-    public Collection<EventDestination> getSubscribedDestinations() {
+    public Collection<EventChannel> getSubscribedDestinations() {
         return eventListener.getSubscription()
                 .getSubscribedDestinations()
                 .keySet();
     }
 
     @Override
-    public void subscribe(EventDestination destination) {
+    public void subscribe(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
         log.info("Subscriber {} Subscribing to destination: {}", id, destination);
         eventListener.subscribe(destination);
@@ -39,7 +39,7 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     }
 
     @Override
-    public void unsubscribe(EventDestination destination) {
+    public void unsubscribe(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
         log.info("Subscriber {} unsubscribing to destination: {}", id, destination);
         eventListener.subscribe(destination);
@@ -66,14 +66,14 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     @Override
     public void unregister() {
         UUID id = eventListener.getSubscription().getSubscriptionId();
-        Collection<EventDestination> destinations = getSubscribedDestinations();
+        Collection<EventChannel> destinations = getSubscribedDestinations();
         log.info("Unregistering subscriber {} for destinations={}", id, destinations);
         eventListener.getSubscription().unregister();
         log.info("Unregistered subscriber {} for destinations={}", id, destinations);
     }
 
     @Override
-    public void onDestinationDestroyed(EventDestination destination) {
+    public void onDestinationDestroyed(EventChannel destination) {
         UUID id = eventListener.getSubscription().getSubscriptionId();
         log.info("Unsubscribing subscription {} from destination={} due to destination destruction", id, destination);
         unsubscribe(destination);

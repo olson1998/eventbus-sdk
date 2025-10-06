@@ -33,9 +33,6 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     @Getter
     protected boolean closed;
 
-    @Getter
-    protected boolean listening;
-
     protected final Duration maxPollInterval;
 
     protected final EventMapper<C> eventMapper;

@@ -1,15 +1,17 @@
 package com.olsonsolution.eventbus.domain.port.repository;
 
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 
 import java.util.UUID;
 
 public interface EventbusManager {
 
-    SubscriptionMetadata registerPublisher(EventDestination destination);
+    SubscriptionMetadata registerPublisher(EventChannel channel);
 
-    UUID registerSubscriber();
+    UUID getChannelId(EventChannel channel);
+
+    UUID registerSubscription();
 
     SubscriptionMetadata renewPublisherSubscription(UUID subscriptionId);
 
@@ -17,6 +19,6 @@ public interface EventbusManager {
 
     void unregisterSubscription(UUID subscriptionId);
 
-    SubscriptionMetadata subscribeDestination(UUID subscriptionId, EventDestination destination);
+    SubscriptionMetadata subscribeChannel(UUID subscriptionId, EventChannel destination);
 
 }

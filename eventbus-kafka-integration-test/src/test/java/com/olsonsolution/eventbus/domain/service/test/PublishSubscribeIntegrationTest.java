@@ -5,7 +5,7 @@ import com.olsonsolution.eventbus.domain.port.repository.publisher.EventDispatch
 import com.olsonsolution.eventbus.domain.port.repository.publisher.EventPublisher;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventSubscriber;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.Member;
 import com.olsonsolution.eventbus.domain.service.ContinuousKafkaEventListener;
@@ -41,13 +41,13 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
             .name("event-2-processor")
             .type(MemberTypes.GROUP)
             .build();
-    private static final EventDestination EVENT_PROCESSOR_1_DESTINATION = StandardEventDestination.builder()
+    private static final EventChannel EVENT_PROCESSOR_1_DESTINATION = StandardEventChannel.builder()
             .product("eventbus")
             .subscriber(EVENT_1_PROCESSOR_MEMBER)
             .command("test")
             .entity(TestPayload.class.getSimpleName())
             .build();
-    private static final EventDestination EVENT_PROCESSOR_2_DESTINATION = StandardEventDestination.builder()
+    private static final EventChannel EVENT_PROCESSOR_2_DESTINATION = StandardEventChannel.builder()
             .product("eventbus")
             .subscriber(EVENT_2_PROCESSOR_MEMBER)
             .command("test")

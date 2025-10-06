@@ -9,6 +9,8 @@ public interface SubscriptionMetadata {
 
     UUID getId();
 
+    UUID getChannelId();
+
     ZonedDateTime getExpireAt();
 
     ZonedDateTime getCreatedAt();

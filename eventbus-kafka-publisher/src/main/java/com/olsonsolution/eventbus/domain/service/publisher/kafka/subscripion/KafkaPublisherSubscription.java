@@ -2,7 +2,7 @@ package com.olsonsolution.eventbus.domain.service.publisher.kafka.subscripion;
 
 import com.olsonsolution.eventbus.domain.port.repository.EventbusManager;
 import com.olsonsolution.eventbus.domain.port.repository.publisher.subscription.PublisherSubscription;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
+import com.olsonsolution.eventbus.domain.port.stereotype.EventChannel;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ public class KafkaPublisherSubscription implements PublisherSubscription {
     private SubscriptionMetadata metadata;
 
     @Getter
-    private final EventDestination destination;
+    private final EventChannel destination;
 
     private final EventbusManager eventbusManager;
 

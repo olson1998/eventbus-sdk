@@ -18,6 +18,8 @@ public class StandardSubscriptionMetadata implements SubscriptionMetadata {
 
     private UUID id;
 
+    private UUID channelId;
+
     private ZonedDateTime expireAt;
 
     private ZonedDateTime createdAt;
