@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Map;
@@ -63,8 +64,7 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
         EventDispatcher<TestPayload, ?> eventDispatcher = new ImmediateKafkaEventDispatcher<>(
                 new ImmediateKafkaPublisherSubscription(EVENT_PROCESSOR_2_DESTINATION, eventbusManager),
                 TEST_PAYLOAD_EVENT_MAPPER,
-                KAFKA_FACTORY,
-                OBJECT_MAPPER
+                KAFKA_FACTORY
         );
         EventListener<TestPayload, ?> eventListener = new ContinuousKafkaEventListener<>(
                 Duration.ofMillis(20),
@@ -84,8 +84,8 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
                 sleep(400);
                 dispatchTestEvents(testPayloadEventPublisher, 10, testInfo).get(30, SECONDS);
             }
+            awaitUntilAllReceived(event2Processor, 50, Duration.ofSeconds(15));
         }
-        System.out.println("--------");
         Collection<EventMessage<TestPayload>> receivedEvents = event2Processor.getEvents();
         assertThat(receivedEvents).hasSize(50);
     }
@@ -110,6 +110,24 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
                         dispatchFutures ->
                                 CompletableFuture.allOf(dispatchFutures.toArray(CompletableFuture[]::new))
                 ));
+    }
+
+    private void awaitUntilAllReceived(TestEventProcessor processor, int messagesQty, Duration maxAwait) {
+        int received = 0;
+        Instant timestamp = Instant.now();
+        Instant deadline = timestamp.plus(maxAwait);
+        while (received != messagesQty) {
+            received = processor.getEvents().size();
+            if (received == messagesQty) {
+                break;
+            }
+            if (Instant.now().isAfter(deadline)) {
+                throw new IllegalStateException(
+                        "Timeout waiting for all events to be received, received: %d, expected: %d"
+                                .formatted(received, messagesQty)
+                );
+            }
+        }
     }
 
 }

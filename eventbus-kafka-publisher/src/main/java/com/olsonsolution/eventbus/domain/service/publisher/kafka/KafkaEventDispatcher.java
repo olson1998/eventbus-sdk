@@ -47,8 +47,6 @@ abstract class KafkaEventDispatcher<C, S extends KafkaPublisherSubscription> imp
 
     private final KafkaFactory kafkaFactory;
 
-    private final ObjectMapper objectMapper;
-
     @Override
     public void register() {
         if (kafkaSender == null) {

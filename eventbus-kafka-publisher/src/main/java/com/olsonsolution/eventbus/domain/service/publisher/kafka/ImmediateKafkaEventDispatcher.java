@@ -1,6 +1,5 @@
 package com.olsonsolution.eventbus.domain.service.publisher.kafka;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
 import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventAcknowledgment;
@@ -14,9 +13,8 @@ public class ImmediateKafkaEventDispatcher<C> extends KafkaEventDispatcher<C, Im
 
     public ImmediateKafkaEventDispatcher(ImmediateKafkaPublisherSubscription subscription,
                                          EventMapper<C> eventMapper,
-                                         KafkaFactory kafkaFactory,
-                                         ObjectMapper objectMapper) {
-        super(subscription, eventMapper, kafkaFactory, objectMapper);
+                                         KafkaFactory kafkaFactory) {
+        super(subscription, eventMapper, kafkaFactory);
     }
 
     @Override

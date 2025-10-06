@@ -59,7 +59,7 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
         metadata = s.subscribe(channel);
         channelId = metadata.getChannelId();
         UUID subId = s.getSubscriptionId();
-        String groupId = "channel-" + channelId + "-channel-subscriber";
+        String groupId = "channel-" + channelId + "-subscriber";
         if (areAllSubscribersAllType(channelId)) {
             groupId = "subscription-" + subId + "-channel-subscriber";
         }
@@ -155,7 +155,7 @@ public class ContinuousKafkaEventListener<C> extends KafkaEventListener<C, Conti
     }
 
     private void disposeSubscription(Disposable channelSubscription) {
-        if (channelSubscription.isDisposed()) {
+        if (!channelSubscription.isDisposed()) {
             channelSubscription.dispose();
         }
     }
