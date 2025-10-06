@@ -1,6 +1,8 @@
 package com.olsonsolution.eventbus.domain.service.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.olsonsolution.eventbus.domain.model.TestPayload;
 import com.olsonsolution.eventbus.domain.port.props.KafkaClusterProperties;
 import com.olsonsolution.eventbus.domain.port.repository.EventMapper;
@@ -18,12 +20,13 @@ import java.time.Duration;
 import java.util.Properties;
 import java.util.UUID;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
 import static org.apache.kafka.clients.admin.AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.admin.AdminClientConfig.CLIENT_ID_CONFIG;
 
 abstract class EventbusIntegrationTest {
 
-    protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    protected static final ObjectMapper OBJECT_MAPPER = objectMapper();
 
     protected static final KafkaFactory KAFKA_FACTORY = new StandardKafkaFactory(new KafkaClusterProperties() {
         @Override
@@ -73,6 +76,13 @@ abstract class EventbusIntegrationTest {
         kafkaAdmin = null;
         kafkaTopicManager = null;
         eventbusManager = null;
+    }
+
+    private static ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(WRITE_DATES_AS_TIMESTAMPS);
+        return objectMapper;
     }
 
     private static Admin createKafkaAdmin() {

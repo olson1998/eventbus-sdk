@@ -26,8 +26,6 @@ import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +46,7 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
     private final TestEventProcessor event1Processor = new TestEventProcessor();
 
     @Test
-    void shouldSendAndReceiveEvent(TestInfo testInfo) throws ExecutionException, InterruptedException, TimeoutException {
+    void shouldSendAndReceiveEvent(TestInfo testInfo) throws Exception {
         EventDispatcher<TestPayload, ?> eventDispatcher = new ImmediateKafkaEventDispatcher<>(
                 new ImmediateKafkaPublisherSubscription(EVENT_PROCESSOR_1_DESTINATION, eventbusManager),
                 TEST_PAYLOAD_EVENT_MAPPER,
@@ -86,6 +84,8 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
         assertThat(receivedEvents).hasSize(1);
         EventMessage<TestPayload> receivedEvent = CollectionUtils.extractSingleton(receivedEvents);
         assertThat(testPayloadEventMessage.getContent()).isEqualTo(receivedEvent.getContent());
+        testPayloadEventPublisher.close();
+        testPayloadEventSubscriber.close();
     }
 
 }
