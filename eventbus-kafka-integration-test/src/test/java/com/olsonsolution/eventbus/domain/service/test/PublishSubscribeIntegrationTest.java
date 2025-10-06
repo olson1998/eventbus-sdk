@@ -68,9 +68,9 @@ class PublishSubscribeIntegrationTest extends EventbusIntegrationTest {
         );
         EventListener<TestPayload, ?> eventListener = new ContinuousKafkaEventListener<>(
                 Duration.ofMillis(20),
-                new ContinuousKafkaSubscriberSubscription(eventbusManager, Duration.ofMillis(5)),
                 TEST_PAYLOAD_EVENT_MAPPER,
-                KAFKA_FACTORY
+                KAFKA_FACTORY,
+                new ContinuousKafkaSubscriberSubscription(eventbusManager, Duration.ofMillis(5))
         );
         try (EventPublisher<TestPayload> testPayloadEventPublisher =
                      new StandardEventPublisher<>(eventDispatcher, EVENT_PROCESSOR_2_DESTINATION);
