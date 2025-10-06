@@ -25,9 +25,7 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
 
     @Override
     public Collection<EventChannel> getSubscribedDestinations() {
-        return eventListener.getSubscription()
-                .getSubscribedDestinations()
-                .keySet();
+        return eventListener.getSubscription().collectSubscribedDestinations();
     }
 
     @Override
