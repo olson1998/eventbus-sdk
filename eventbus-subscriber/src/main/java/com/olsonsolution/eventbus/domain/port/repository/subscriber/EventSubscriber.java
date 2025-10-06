@@ -4,7 +4,6 @@ import com.olsonsolution.eventbus.domain.port.repository.Participant;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 
 public interface EventSubscriber<C> extends Participant {
 
@@ -14,6 +13,8 @@ public interface EventSubscriber<C> extends Participant {
 
     void unsubscribe(EventDestination destination);
 
-    CompletableFuture<Void> receive();
+    void receive();
+
+    void stopReceiving();
 
 }

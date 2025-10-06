@@ -7,7 +7,6 @@ import com.olsonsolution.eventbus.domain.port.repository.KafkaFactory;
 import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcessor;
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.EventListener;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
-import com.olsonsolution.eventbus.domain.port.stereotype.EventMessage;
 import com.olsonsolution.eventbus.domain.port.stereotype.MappingResult;
 import com.olsonsolution.eventbus.domain.port.stereotype.SubscriptionMetadata;
 import com.olsonsolution.eventbus.domain.port.stereotype.exception.EventMappingException;
@@ -16,19 +15,25 @@ import com.olsonsolution.eventbus.domain.service.subscription.KafkaSubscriberSub
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.slf4j.Logger;
 import reactor.core.Disposable;
 import reactor.kafka.receiver.KafkaReceiver;
+import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverPartition;
 import reactor.kafka.receiver.ReceiverRecord;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -43,87 +48,138 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
     private boolean closed;
 
     @Getter
+    private boolean listening;
+
+    protected final Duration maxPollInterval;
+
+    @Getter
     private final S subscription;
+
+    private final Logger log;
 
     private final EventMapper<C> eventMapper;
 
     private final KafkaFactory kafkaFactory;
 
-    private final ConcurrentMap<KafkaReceiver<String, MappingResult<C>>, List<SubscriptionMetadata>> kafkaReceiversSubs =
+    private final ConcurrentMap<UUID, Disposable> consumerSubscriptions = new ConcurrentHashMap<>();
+
+    private final ConcurrentMap<UUID, ReceiverOptions<String, MappingResult<C>>> subscriptionReceiverOptions =
             new ConcurrentHashMap<>();
 
-    private final ConcurrentMap<KafkaReceiver<String, MappingResult<C>>, Disposable> kafkaReceiverPolls =
+    private final ConcurrentMap<UUID, KafkaReceiver<String, MappingResult<C>>> subscriptionReceivers =
             new ConcurrentHashMap<>();
 
     @Override
     public void subscribe(EventDestination destination) {
+        assertIsNotClosed();
         SubscriptionMetadata metadata = subscription.subscribe(destination);
-        KafkaReceiver<String, MappingResult<C>> kafkaReceiver = findReceiverByMetadata(metadata)
-                .orElseGet(() -> kafkaFactory.fabricateReceiver(
-                        subscription.getSubscriptionId(),
-                        destination,
-                        metadata.getApiDocs(),
-                        eventMapper,
-                        this::onReceiverPartitionsAssigned
-                ));
-        kafkaReceiversSubs.computeIfAbsent(kafkaReceiver, k -> new ArrayList<>())
-                .add(metadata);
+        UUID subscriptionId = metadata.getId();
+        if (!subscriptionReceiverOptions.containsKey(subscriptionId)) {
+            ReceiverOptions<String, MappingResult<C>> receiverOptions = kafkaFactory.fabricateReceiver(
+                    maxPollInterval,
+                    subscriptionId,
+                    destination,
+                    metadata.getApiDocs(),
+                    eventMapper
+            );
+            receiverOptions.addAssignListener(this::onAssignment);
+            KafkaReceiver<String, MappingResult<C>> kafkaReceiver = KafkaReceiver.create(receiverOptions);
+            subscriptionReceiverOptions.put(subscriptionId, receiverOptions);
+            subscriptionReceivers.put(subscriptionId, kafkaReceiver);
+        }
     }
 
     @Override
     public void unsubscribe(EventDestination destination) {
+        assertIsNotClosed();
         SubscriptionMetadata metadata = subscription.getSubscribedDestinations().get(destination);
         if (metadata == null) {
             return;
         }
-        KafkaReceiver<String, MappingResult<C>> kafkaReceiver = findReceiverByMetadata(metadata)
-                .orElseThrow();
-        kafkaReceiver.doOnConsumer(consumer -> {
-            subscription.getSubscribedDestinations().remove(destination);
-            consumer.assign(KafkaAsyncAPIUtils.collectTopicPartitions(metadata.getApiDocs()));
-            return consumer;
-        }).subscribe();
+        UUID subscriptionId = metadata.getId();
+        if (subscriptionReceivers.containsKey(subscriptionId)) {
+            KafkaReceiver<String, MappingResult<C>> kafkaReceiver = subscriptionReceivers.get(subscriptionId);
+            kafkaReceiver.doOnConsumer(consumer -> {
+                subscription.getSubscribedDestinations().remove(destination);
+                consumer.assign(KafkaAsyncAPIUtils.collectTopicPartitions(metadata.getApiDocs()));
+                return consumer;
+            }).subscribe();
+        }
     }
 
-    protected abstract void onReceiverPartitionsAssigned(Collection<ReceiverPartition> receiverPartitions);
-
-    protected void consumeAndProcess(EventProcessor<C> eventProcessor) {
-        for (KafkaReceiver<String, MappingResult<C>> kafkaReceiver : kafkaReceiversSubs.keySet()) {
-            kafkaReceiverPolls.computeIfAbsent(
-                    kafkaReceiver,
-                    receiver -> consumeAndProcess(receiver, eventProcessor)
+    @Override
+    public void listen(EventProcessor<C> eventProcessor) {
+        assertIsNotClosed();
+        listening = true;
+        for (Map.Entry<UUID, KafkaReceiver<String, MappingResult<C>>> subscriptionReceiver :
+                subscriptionReceivers.entrySet()) {
+            UUID subscriptionId = subscriptionReceiver.getKey();
+            KafkaReceiver<String, MappingResult<C>> kafkaReceiver = subscriptionReceiver.getValue();
+            consumerSubscriptions.computeIfAbsent(
+                    subscriptionId,
+                    sid -> subscribeToReceiver(kafkaReceiver, eventProcessor)
             );
         }
     }
 
-    private Disposable consumeAndProcess(KafkaReceiver<String, MappingResult<C>> kafkaReceiver,
-                                         EventProcessor<C> eventProcessor) {
-        return kafkaReceiver.receive()
-                .map(receiverRecord -> processEvent(receiverRecord, eventProcessor))
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue))
-                .doOnNext(eventProcessor::onPostProcess)
-                .doOnTerminate(() -> kafkaReceiverPolls.remove(kafkaReceiver))
-                .subscribe();
+    @Override
+    public void stopListening() {
+        assertIsNotClosed();
+        for (Map.Entry<UUID, ReceiverOptions<String, MappingResult<C>>> subscriptionReceiverOps :
+                subscriptionReceiverOptions.entrySet()) {
+            UUID subscriptionId = subscriptionReceiverOps.getKey();
+            log.info("Subscriber: {} Stopping listening to subscription: {}",
+                    subscription.getSubscriptionId(), subscriptionId);
+            ReceiverOptions<String, MappingResult<C>> receiverOptions = subscriptionReceiverOps.getValue();
+            receiverOptions.assignment(CollectionUtils.emptyCollection());
+        }
+        listening = false;
     }
 
-    private Map.Entry<EventMessage<C>, Integer> processEvent(ReceiverRecord<String, MappingResult<C>> receiverRecord,
-                                                             EventProcessor<C> eventProcessor) {
-        int processStatus;
+    protected abstract Disposable subscribeToReceiver(KafkaReceiver<String, MappingResult<C>> kafkaReceiver,
+                                                      EventProcessor<C> eventProcessor);
+
+    protected void assertIsNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("Event listener is closed");
+        }
+    }
+
+    protected Collection<KafkaReceiver<String, MappingResult<C>>> getKafkaReceivers() {
+        return subscriptionReceivers.values();
+    }
+
+    protected void processEvent(ReceiverRecord<String, MappingResult<C>> receiverRecord,
+                                EventProcessor<C> eventProcessor) {
         KafkaEventMessage<C> kafkaEventMessage = mapToKafkaEventMessage(receiverRecord);
         try {
-            processStatus = processKafkaEvent(kafkaEventMessage, eventProcessor);
+            processKafkaEvent(kafkaEventMessage, eventProcessor);
         } catch (Exception e) {
-            processStatus = eventProcessor.onError(e);
+            eventProcessor.onError(e);
         }
-        return new DefaultMapEntry<>(kafkaEventMessage, processStatus);
+        receiverRecord.receiverOffset().acknowledge();
     }
 
-    private int processKafkaEvent(KafkaEventMessage<C> kafkaEventMessage, EventProcessor<C> eventProcessor) {
-        if (kafkaEventMessage instanceof ConsumedCorruptedKafkaEventMessage<C> corruptedKafkaEventMessage) {
-            return eventProcessor.onCorruptedEvent(corruptedKafkaEventMessage);
-        } else {
-            return eventProcessor.onEvent(kafkaEventMessage);
+    protected void disposeSubscriptions() {
+        for (Disposable kafkaConsumerSubscription : consumerSubscriptions.values()) {
+            if (kafkaConsumerSubscription.isDisposed()) {
+                kafkaConsumerSubscription.dispose();
+            }
         }
+    }
+
+    private void processKafkaEvent(KafkaEventMessage<C> kafkaEventMessage, EventProcessor<C> eventProcessor) {
+        if (kafkaEventMessage instanceof ConsumedCorruptedKafkaEventMessage<C> corruptedKafkaEventMessage) {
+            eventProcessor.onCorruptedEvent(corruptedKafkaEventMessage);
+        } else {
+            eventProcessor.onEvent(kafkaEventMessage);
+        }
+    }
+
+    protected void onAssignment(Collection<ReceiverPartition> receiverPartitions) {
+        Collection<TopicPartition> topicPartitions =
+                CollectionUtils.collect(receiverPartitions, ReceiverPartition::topicPartition);
+        log.info("Subscriber: {} Assigned to partitions: {}", subscription.getSubscriptionId(), topicPartitions);
     }
 
     private KafkaEventMessage<C> mapToKafkaEventMessage(ReceiverRecord<String, MappingResult<C>> receiverRecord) {
@@ -168,23 +224,9 @@ abstract class KafkaEventListener<C, S extends KafkaSubscriberSubscription> impl
         return entry(header.key(), new String(header.value()));
     }
 
-    private Optional<KafkaReceiver<String, MappingResult<C>>> findReceiverByMetadata(SubscriptionMetadata metadata) {
-        return kafkaReceiversSubs.entrySet()
-                .stream()
-                .filter(receiverSubscriptions -> receiverSubscriptions.getValue()
-                        .contains(metadata))
-                .findFirst()
-                .map(Map.Entry::getKey);
-    }
-
     @Override
     public void close() throws Exception {
-        for (KafkaReceiver<String, MappingResult<C>> kafkaReceiver : kafkaReceiversSubs.keySet()) {
-            kafkaReceiver.doOnConsumer(consumer -> {
-                consumer.close();
-                return consumer;
-            }).subscribe();
-        }
+        disposeSubscriptions();
         closed = true;
     }
 }

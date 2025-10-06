@@ -4,15 +4,17 @@ import com.olsonsolution.eventbus.domain.port.repository.processor.EventProcesso
 import com.olsonsolution.eventbus.domain.port.repository.subscriber.subscription.SubscriberSubscription;
 import com.olsonsolution.eventbus.domain.port.stereotype.EventDestination;
 
-import java.util.concurrent.CompletableFuture;
-
 public interface EventListener<C, S extends SubscriberSubscription> extends AutoCloseable {
 
     boolean isClosed();
 
+    boolean isListening();
+
     S getSubscription();
 
-    CompletableFuture<Void> receive(EventProcessor<C> eventProcessor);
+    void listen(EventProcessor<C> eventProcessor);
+
+    void stopListening();
 
     void subscribe(EventDestination destination);
 

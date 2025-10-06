@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -48,8 +47,13 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
     }
 
     @Override
-    public CompletableFuture<Void> receive() {
-        return eventListener.receive(eventProcessor);
+    public void receive() {
+        eventListener.listen(eventProcessor);
+    }
+
+    @Override
+    public void stopReceiving() {
+        eventListener.stopListening();
     }
 
     @Override
@@ -77,6 +81,9 @@ public class StandardEventSubscriber<C> implements EventSubscriber<C> {
 
     @Override
     public void close() throws Exception {
+        if (eventListener.isListening()) {
+            eventListener.stopListening();
+        }
         eventListener.close();
         closed = true;
     }
